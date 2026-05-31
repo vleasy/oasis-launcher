@@ -94,7 +94,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getChatMessages: (friendId) =>
     ipcRenderer.invoke("get-chat-messages", { friendId }),
   sendChatMessage: (friendId, content) =>
-    ipcRenderer.invoke("send-chat-message", { friendId, content }),
+    ipcRenderer.invoke("friends-chat-send", { friendId, content }),
   getUnreadCount: () =>
     ipcRenderer.invoke("get-unread-count"),
 

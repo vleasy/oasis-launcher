@@ -282,13 +282,17 @@ ipcMain.handle("update-profile", async (_event, { nickname, status, bio, favorit
 });
 
 ipcMain.handle("save-profile-local", async (_event, data) => {
-  store.set("profile", data);
-  return { success: true };
+  try {
+    store.set("profile", data);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 ipcMain.handle("load-profile-local", async () => {
-  const data = store.get("profile");
-  return { success: true, data: data || null };
+  try {
+    const data = store.get("profile");
+    return { success: true, data: data || null };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 ipcMain.handle("upload-avatar", async (_event, { dataUrl }) => {
@@ -414,7 +418,7 @@ ipcMain.handle("get-chat-messages", async (_event, { friendId }) => {
   } catch (e) { return { success: false, error: e.message }; }
 });
 
-ipcMain.handle("friends-chat-send", async (_event, { friendId, message }) => {
+ipcMain.handle("friends-chat-send", async (_event, { friendId, content }) => {
   try {
     const auth = store.get("auth");
     const res = await vdsApiJson(`/api/friends/chat/${encodeURIComponent(friendId)}`, {
@@ -478,20 +482,26 @@ ipcMain.handle("remember-me-set", async (_event, { email, refreshToken, remember
 });
 
 ipcMain.handle("remember-me-clear", async () => {
-  store.delete("remember-me");
-  return { success: true };
+  try {
+    store.delete("remember-me");
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 // ============================================
 // LANGUAGE SETTINGS (persisted via electron-store)
 // ============================================
 ipcMain.handle("lang-get", async () => {
-  return { success: true, data: store.get("language", "ru") };
+  try {
+    return { success: true, data: store.get("language", "ru") };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 ipcMain.handle("lang-set", async (_event, { lang }) => {
-  store.set("language", lang);
-  return { success: true };
+  try {
+    store.set("language", lang);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 // ============================================
@@ -499,7 +509,9 @@ ipcMain.handle("lang-set", async (_event, { lang }) => {
 // ============================================
 function sanitizePathPart(input) {
   if (typeof input !== "string") return "";
-  return input.replace(/\.\./g, "").replace(/[/\\]/g, "");
+  const safe = path.normalize(input).replace(/^[A-Za-z]:\\?/, "");
+  if (safe.startsWith("..") || safe.startsWith("/") || safe.startsWith("\\")) return "";
+  return safe.replace(/[/\\]/g, "");
 }
 
 function getCustomDir(mcVersion, category) {
@@ -510,50 +522,58 @@ function getCustomDir(mcVersion, category) {
 }
 
 ipcMain.handle("drop-file", async (_event, { sourcePath, mcVersion, category }) => {
-  const destDir = getCustomDir(mcVersion, category);
-  fs.mkdirSync(destDir, { recursive: true });
-  const fileName = path.basename(sourcePath);
-  const destPath = path.join(destDir, fileName);
-  // Avoid overwrite: append (N) if exists
-  let finalPath = destPath;
-  let idx = 1;
-  while (fs.existsSync(finalPath)) {
-    const ext = path.extname(fileName);
-    const base = path.basename(fileName, ext);
-    finalPath = path.join(destDir, `${base} (${idx})${ext}`);
-    idx++;
-  }
-  fs.copyFileSync(sourcePath, finalPath);
-  return { success: true, fileName: path.basename(finalPath) };
+  try {
+    const destDir = getCustomDir(mcVersion, category);
+    fs.mkdirSync(destDir, { recursive: true });
+    const resolvedSource = path.resolve(sourcePath);
+    const destPath = path.join(destDir, path.basename(resolvedSource));
+    let finalPath = destPath;
+    let idx = 1;
+    while (fs.existsSync(finalPath)) {
+      const ext = path.extname(destPath);
+      const base = path.basename(destPath, ext);
+      finalPath = path.join(destDir, `${base} (${idx})${ext}`);
+      idx++;
+    }
+    fs.copyFileSync(resolvedSource, finalPath);
+    return { success: true, fileName: path.basename(finalPath) };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 ipcMain.handle("list-files", async (_event, { mcVersion, category }) => {
-  const dir = getCustomDir(mcVersion, category);
-  if (!fs.existsSync(dir)) return { success: true, data: [] };
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  const files = entries
-    .filter(e => e.isFile())
-    .map(e => {
-      const fullPath = path.join(dir, e.name);
-      const stat = fs.statSync(fullPath);
-      return { name: e.name, size: stat.size, modified: stat.mtimeMs };
-    })
-    .sort((a, b) => b.modified - a.modified);
-  return { success: true, data: files };
+  try {
+    const dir = getCustomDir(mcVersion, category);
+    if (!fs.existsSync(dir)) return { success: true, data: [] };
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    const files = entries
+      .filter(e => e.isFile())
+      .map(e => {
+        const fullPath = path.join(dir, e.name);
+        const stat = fs.statSync(fullPath);
+        return { name: e.name, size: stat.size, modified: stat.mtimeMs };
+      })
+      .sort((a, b) => b.modified - a.modified);
+    return { success: true, data: files };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 ipcMain.handle("delete-file", async (_event, { mcVersion, category, fileName }) => {
-  const dir = getCustomDir(mcVersion, category);
-  const filePath = path.join(dir, fileName);
-  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  return { success: true };
+  try {
+    const dir = getCustomDir(mcVersion, category);
+    const safeName = path.basename(fileName);
+    const filePath = path.join(dir, safeName);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 // ============================================
 // INSTALLED REGISTRY IPC
 // ============================================
 ipcMain.handle("get-installed", async () => {
-  return { success: true, data: readInstalled() };
+  try {
+    return { success: true, data: readInstalled() };
+  } catch (e) { return { success: false, error: e.message }; }
 });
 
 ipcMain.handle("installed-check", async (_event, { versionId, sha1 }) => {
