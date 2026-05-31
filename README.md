@@ -78,15 +78,6 @@
 - Сборки (модпаки одним кликом)
 - Серверный плагин Oasis для расширенной синхронизации (белый список через друзей)
 
-## Скриншоты
-
-_Добавь сюда скриншоты:_
-- `assets/screenshots/dashboard.png` - главный экран, кнопка Play
-- `assets/screenshots/versions.png` - список версий с выбором Fabric/Forge
-- `assets/screenshots/friends.png` - друзья, чат, приглашения
-- `assets/screenshots/mods.png` - менеджер модов и шейдеров
-- `assets/screenshots/ingame.png` - мод Oasis в игре (список друзей на сервере)
-- `assets/screenshots/shaders.png` - визуальный мод, сравнение с/без шейдеров
 
 ## Установка
 
