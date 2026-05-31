@@ -1,0 +1,61 @@
+{
+  "name": "oasis-launcher",
+  "version": "1.0.0",
+  "description": "Oasis Minecraft Launcher — Desktop App",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder build --win --config",
+    "dist": "electron-builder build --win --x64 --publish never"
+  },
+  "build": {
+    "appId": "com.oasis.launcher",
+    "productName": "Oasis Launcher",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "prototype.html",
+      "oasis-api/dist/**/*",
+      "oasis-api/node_modules/**/*",
+      "oasis-api/.env",
+      "oasis-api/prisma/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "shortcutName": "Oasis Launcher"
+    },
+    "asar": true,
+    "asarUnpack": [],
+    "compression": "maximum"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "electron-store": "^8.2.0"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  }
+}

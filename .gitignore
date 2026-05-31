@@ -1,0 +1,11 @@
+node_modules/
+dist/
+oasis-api/dist/
+oasis-api/node_modules/
+.env
+oasis-api/.env
+electron/store/
+*.db
+*.log
+.DS_Store
+Thumbs.db

@@ -1,0 +1,3413 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Oasis Launcher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="lucide.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --glass-bg: rgba(15, 15, 25, 0.65);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border-hover: rgba(255, 255, 255, 0.15);
+    --glass-shadow: rgba(0, 0, 0, 0.5);
+    --accent-purple: #7C3AED;
+    --accent-cyan: #06B6D4;
+    --accent-gradient: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+    --text-primary: rgba(255, 255, 255, 0.92);
+    --text-secondary: rgba(255, 255, 255, 0.55);
+    --text-tertiary: rgba(255, 255, 255, 0.35);
+    --danger: #EF4444;
+    --success: #22C55E;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 28px;
+    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --sidebar-w: 250px;
+    --detail-w: 0px;
+    --titlebar-h: 36px;
+    --window-radius: 16px;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: var(--font);
+    background: transparent;
+    color: var(--text-primary);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ BLOBS ============ */
+  .bg-blobs {
+    position: absolute; inset: 0; z-index: 0;
+    overflow: hidden; pointer-events: none;
+  }
+  .bg-blobs .blob {
+    position: absolute; border-radius: 50%;
+    filter: blur(80px); opacity: 0.35;
+    will-change: transform;
+  }
+  .blob-1 { width: 500px; height: 500px; background: var(--accent-purple); top: -10%; left: -5%; animation: floatBlob 22s ease-in-out infinite alternate; }
+  .blob-2 { width: 400px; height: 400px; background: var(--accent-cyan); bottom: -8%; right: -5%; animation: floatBlob 18s ease-in-out infinite alternate-reverse; }
+  .blob-3 { width: 350px; height: 350px; background: #8B5CF6; top: 50%; left: 50%; transform: translate(-50%,-50%); animation: floatBlob 25s ease-in-out infinite alternate; }
+  .blob-4 { width: 200px; height: 200px; background: #F472B6; top: 20%; right: 15%; animation: floatBlob 15s ease-in-out infinite alternate-reverse; }
+
+  @keyframes floatBlob {
+    0%   { transform: translate(0,0) scale(1); }
+    33%  { transform: translate(30px,-40px) scale(1.1); }
+    66%  { transform: translate(-20px,20px) scale(0.9); }
+    100% { transform: translate(40px,-30px) scale(1.05); }
+  }
+
+  /* ============ GLASS ============ */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 8px 48px var(--glass-shadow);
+  }
+  .glass-sm {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px) saturate(1.3);
+    -webkit-backdrop-filter: blur(16px) saturate(1.3);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+  }
+  .glass-card {
+    background: rgba(20,20,35,0.55);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    cursor: pointer;
+  }
+  .glass-card:hover {
+    background: rgba(25,25,45,0.65);
+    border-color: var(--glass-border-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(124,58,237,0.15);
+  }
+  .glass-card.active {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 24px rgba(124,58,237,0.2);
+  }
+
+  /* ============ TITLE BAR ============ */
+  .titlebar {
+    height: var(--titlebar-h); flex-shrink: 0;
+    display: flex; align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 16px;
+    -webkit-app-region: drag;
+    background: rgba(10,10,22,0.85);
+    backdrop-filter: blur(20px) saturate(1.3);
+    -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    border-bottom: 1px solid var(--glass-border);
+    z-index: 10;
+    position: relative;
+  }
+  .titlebar-title {
+    font-size: 13px; font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.3px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .titlebar-title svg { width: 18px; height: 18px; }
+  .titlebar-actions { display: flex; gap: 4px; -webkit-app-region: no-drag; }
+  .titlebar-btn {
+    width: 36px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent;
+    color: var(--text-secondary); border-radius: 6px;
+    cursor: pointer; transition: var(--transition);
+    -webkit-app-region: no-drag;
+  }
+  .titlebar-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+  .titlebar-btn.close:hover { background: rgba(239,68,68,0.2); color: var(--danger); }
+
+  /* ============ APP SHELL ============ */
+  #app {
+    position: relative; z-index: 1;
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    border-radius: var(--window-radius);
+    overflow: hidden;
+    background: #08080f;
+  }
+  .launcher-container {
+    flex: 1; width: 100%;
+    display: flex; flex-direction: column;
+    overflow: hidden; position: relative;
+    background: rgba(8,8,15,0.6);
+    backdrop-filter: blur(32px) saturate(1.5);
+    -webkit-backdrop-filter: blur(32px) saturate(1.5);
+  }
+
+  /* ============ AUTH SCREEN ============ */
+  .screen-auth { display: flex; width: 100%; height: 100%; }
+  .auth-left {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 60px; position: relative;
+  }
+  .auth-left::after {
+    content: ''; position: absolute;
+    right: 0; top: 10%; bottom: 10%;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.08), transparent);
+  }
+  .auth-brand { display: flex; align-items: center; gap: 16px; margin-bottom: 48px; }
+  .auth-brand svg { width: 48px; height: 48px; filter: drop-shadow(0 0 20px rgba(124,58,237,0.4)); }
+  .auth-brand h1 { font-size: 28px; font-weight: 800; background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .auth-form { width: 100%; max-width: 360px; }
+  .auth-tabs { display: flex; gap: 4px; background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 28px; }
+  .auth-tab { flex: 1; padding: 10px; text-align: center; border: none; background: transparent; color: var(--text-secondary); font-family: var(--font); font-size: 14px; font-weight: 500; border-radius: 6px; cursor: pointer; transition: var(--transition); }
+  .auth-tab.active { background: rgba(124,58,237,0.25); color: #fff; box-shadow: 0 0 16px rgba(124,58,237,0.15); }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .input-wrap { position: relative; display: flex; align-items: center; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); transition: var(--transition); }
+  .input-wrap:focus-within { border-color: var(--accent-purple); box-shadow: 0 0 16px rgba(124,58,237,0.12); }
+  .input-wrap .icon { position: absolute; left: 12px; color: var(--text-tertiary); width: 18px; height: 18px; pointer-events: none; }
+  .input-wrap input { width: 100%; padding: 12px 12px 12px 40px; background: transparent; border: none; outline: none; color: var(--text-primary); font-family: var(--font); font-size: 14px; }
+  .input-wrap input::placeholder { color: var(--text-tertiary); }
+  .input-wrap .toggle-pw { position: absolute; right: 10px; background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; display: flex; transition: var(--transition); }
+  .input-wrap .toggle-pw:hover { color: var(--text-secondary); }
+
+  .btn-primary {
+    width: 100%; padding: 13px; border: none;
+    border-radius: var(--radius-sm);
+    background: var(--accent-gradient); color: #fff;
+    font-family: var(--font); font-size: 15px; font-weight: 600;
+    cursor: pointer; transition: var(--transition); position: relative; overflow: hidden;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 32px rgba(124,58,237,0.3); }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary .ripple {
+    position: absolute; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    transform: scale(0); animation: rippleAnim 0.6s ease-out;
+    pointer-events: none;
+  }
+  @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+
+  .btn-ghost { padding: 8px 14px; border: none; background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
+  .btn-ghost:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+
+  .auth-links { margin-top: 16px; text-align: center; }
+  .auth-links a { color: var(--text-tertiary); font-size: 13px; text-decoration: none; transition: var(--transition); }
+  .auth-links a:hover { color: var(--accent-cyan); }
+  .auth-error { color: var(--danger); font-size: 13px; text-align: center; margin-top: 12px; min-height: 20px; }
+
+  .auth-right { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; text-align: center; position: relative; overflow: hidden; }
+  .auth-right .blob-decoration { position: absolute; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(124,58,237,0.12), transparent 70%); top: -50px; right: -50px; pointer-events: none; }
+  .auth-right .blob-decoration-2 { position: absolute; width: 250px; height: 250px; border-radius: 50%; background: radial-gradient(circle, rgba(6,182,212,0.1), transparent 70%); bottom: -40px; left: -40px; pointer-events: none; }
+  .auth-right .mc-logo { width: 120px; height: 120px; margin-bottom: 24px; filter: drop-shadow(0 0 40px rgba(124,58,237,0.3)); }
+  .auth-right h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+  .auth-right p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; max-width: 300px; }
+  .auth-right .features { margin-top: 28px; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+  .auth-right .features .feat { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-secondary); }
+  .auth-right .features .feat svg { width: 18px; height: 18px; color: var(--accent-cyan); }
+
+  /* ============ MAIN LAYOUT ============ */
+  .screen-main { display: none; width: 100%; height: 100%; }
+  .screen-main.visible { display: flex; }
+
+  .main-layout {
+    display: flex; width: 100%; height: 100%;
+    position: relative;
+  }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar {
+    width: var(--sidebar-w); flex-shrink: 0;
+    display: flex; flex-direction: column;
+    padding: 20px 16px;
+    border-right: 1px solid var(--glass-border);
+    background: rgba(12,12,22,0.5);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    z-index: 2;
+  }
+  .sidebar-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 15px;
+    padding: 0 10px 20px;
+    border-bottom: 1px solid var(--glass-border);
+    margin-bottom: 16px;
+  }
+  .sidebar-logo svg { width: 26px; height: 26px; }
+  .sidebar-user {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px; margin-bottom: 20px;
+    border-radius: var(--radius-md);
+    cursor: pointer; transition: var(--transition);
+  }
+  .sidebar-user:hover { background: rgba(255,255,255,0.04); }
+  .sidebar-user .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--accent-gradient);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px; color: #fff; flex-shrink: 0;
+  }
+  .sidebar-user .su-info { flex: 1; min-width: 0; }
+  .sidebar-user .su-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-user .su-status { font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px; }
+  .sidebar-user .su-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+  .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px;
+    border: none; background: transparent;
+    color: var(--text-secondary); font-family: var(--font);
+    font-size: 13px; font-weight: 500;
+    border-radius: var(--radius-sm);
+    cursor: pointer; transition: var(--transition);
+    text-align: left; width: 100%;
+  }
+  .sidebar-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+  .sidebar-nav-item.active { background: rgba(124,58,237,0.12); color: #fff; }
+  .sidebar-nav-item.active::before { content: ''; position: absolute; left: 0; width: 3px; height: 20px; background: var(--accent-gradient); border-radius: 0 3px 3px 0; }
+  .sidebar-nav-item { position: relative; }
+  .sidebar-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 5px; border-radius: 50px; background: var(--danger); color: #fff; font-size: 9px; font-weight: 700; line-height: 1; margin-left: auto; }
+
+  .sidebar-play-btn {
+    margin: 12px 0 8px;
+    padding: 12px; border: none;
+    border-radius: var(--radius-sm);
+    background: var(--accent-gradient);
+    color: #fff; font-family: var(--font);
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: var(--transition);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    position: relative;
+  }
+  .sidebar-play-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(124,58,237,0.35); }
+  .sidebar-play-btn:active { transform: scale(0.98); }
+  .sidebar-play-btn svg { width: 20px; height: 20px; }
+  .sidebar-play-btn .glow {
+    position: absolute; inset: -2px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-gradient); opacity: 0.3;
+    filter: blur(12px); z-index: -1;
+  }
+
+  .sidebar-footer {
+    padding-top: 12px;
+    border-top: 1px solid var(--glass-border);
+  }
+  .sidebar-version {
+    font-size: 10px; color: var(--text-tertiary);
+    padding: 0 10px; margin-bottom: 8px;
+  }
+  .sidebar-logout {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; width: 100%;
+    border: none; background: transparent;
+    color: var(--text-tertiary); font-family: var(--font);
+    font-size: 12px; font-weight: 500;
+    border-radius: var(--radius-sm);
+    cursor: pointer; transition: var(--transition);
+  }
+  .sidebar-logout:hover { background: rgba(239,68,68,0.08); color: var(--danger); }
+  .sidebar-logout svg { width: 16px; height: 16px; }
+
+  /* ===== MAIN CENTER ===== */
+  .main-center {
+    flex: 1; display: flex; flex-direction: column;
+    min-width: 0; overflow: hidden;
+  }
+
+  /* ===== TOP HEADER ===== */
+  .top-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--glass-border);
+    flex-shrink: 0;
+    background: rgba(10,10,18,0.3);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .top-header h2 { font-size: 16px; font-weight: 700; }
+  .top-header .th-actions { display: flex; align-items: center; gap: 8px; }
+
+  .search-wrap {
+    display: flex; align-items: center;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 0 10px;
+    transition: var(--transition);
+    width: 180px;
+  }
+  .search-wrap:focus-within { border-color: var(--accent-purple); box-shadow: 0 0 12px rgba(124,58,237,0.1); }
+  .search-wrap svg { width: 16px; height: 16px; color: var(--text-tertiary); flex-shrink: 0; }
+  .search-wrap input {
+    background: transparent; border: none; outline: none;
+    color: var(--text-primary); font-family: var(--font);
+    font-size: 13px; padding: 8px;
+    width: 100%;
+  }
+  .search-wrap input::placeholder { color: var(--text-tertiary); }
+
+  .filter-chips { display: flex; gap: 4px; }
+  .filter-chip {
+    padding: 6px 12px; border: 1px solid var(--glass-border);
+    background: transparent; border-radius: 50px;
+    color: var(--text-secondary); font-family: var(--font);
+    font-size: 12px; font-weight: 500;
+    cursor: pointer; transition: var(--transition);
+  }
+  .filter-chip:hover { border-color: var(--glass-border-hover); color: var(--text-primary); }
+  .filter-chip.active { background: rgba(124,58,237,0.15); border-color: var(--accent-purple); color: #fff; }
+
+  /* ===== PAGE WRAPPER (for accounts/settings) ===== */
+  .page-wrapper {
+    flex: 1; overflow: hidden; position: relative;
+  }
+  .page {
+    display: none; width: 100%; height: 100%;
+    padding: 28px 32px; overflow-y: auto;
+    position: absolute; top: 0; left: 0;
+  }
+  .page.visible { display: block; }
+
+  /* ===== VERSIONS GRID ===== */
+  .grid-page {
+    display: none; flex-direction: column;
+    height: 100%; overflow: hidden;
+  }
+  .grid-page.visible { display: flex; }
+
+  .versions-grid-wrap {
+    flex: 1; overflow-y: auto; overflow-x: hidden;
+    padding: 20px 24px 32px;
+  }
+  .versions-grid-wrap::-webkit-scrollbar { width: 6px; }
+  .versions-grid-wrap::-webkit-scrollbar-track { background: transparent; }
+  .versions-grid-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 6px; }
+  .versions-grid-wrap::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+
+  .versions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  /* ===== VERSION CARDS ===== */
+  .version-card {
+    border-radius: var(--radius-md);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), box-shadow 0.3s ease, border-color 0.3s ease;
+    border: 1px solid var(--glass-border);
+    background: rgba(20,20,35,0.55);
+    aspect-ratio: 16 / 10;
+    min-height: 160px;
+  }
+  .version-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 48px rgba(124,58,237,0.2);
+    border-color: var(--glass-border-hover);
+    z-index: 5;
+  }
+  .version-card.selected {
+    border-color: var(--accent-purple);
+    box-shadow: 0 0 24px rgba(124,58,237,0.25), 0 8px 32px rgba(0,0,0,0.3);
+  }
+  .version-card .vc-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    opacity: 0.4;
+    transition: opacity 0.4s ease;
+  }
+  .version-card:hover .vc-bg { opacity: 0.6; }
+  .version-card .vc-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 30%, rgba(8,8,15,0.88) 80%);
+    z-index: 1;
+  }
+  .version-card .vc-content {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 14px 16px;
+    z-index: 2;
+  }
+  .version-card .vc-top-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .version-card .vc-name {
+    font-size: 14px; font-weight: 700;
+    line-height: 1.3;
+  }
+  .version-card .vc-badge {
+    font-size: 9px; padding: 2px 8px;
+    border-radius: 50px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .badge-custom  { background: rgba(124,58,237,0.15); color: var(--accent-purple); }
+  .badge-vanilla { background: rgba(6,182,212,0.15); color: var(--accent-cyan); }
+  .badge-offline { background: rgba(163,163,163,0.12); color: #A3A3A3; }
+  .badge-fabric  { background: rgba(6,182,212,0.15); color: var(--accent-cyan); }
+  .badge-forge   { background: rgba(251,146,60,0.15); color: #FB923C; }
+
+  .version-card .vc-meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 6px;
+  }
+  .version-card .vc-meta-item {
+    font-size: 11px; color: var(--text-secondary);
+    display: flex; align-items: center; gap: 3px;
+  }
+
+  .version-card .vc-visual-mod {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 10px; font-weight: 600;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .vc-visual-mod.yes { color: var(--success); background: rgba(34,197,94,0.1); }
+  .vc-visual-mod.no { color: #A3A3A3; background: rgba(163,163,163,0.08); }
+
+  .version-card .vc-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 4px;
+  }
+  .version-card .vc-date {
+    font-size: 10px; color: var(--text-tertiary);
+  }
+  .version-card .vc-progress {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: rgba(255,255,255,0.04);
+    z-index: 3;
+  }
+  .version-card .vc-progress .fill {
+    height: 100%;
+    background: var(--accent-gradient);
+    border-radius: 0 3px 0 0;
+    transition: width 0.5s ease;
+    position: relative;
+  }
+  .version-card .vc-progress .fill::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+  .vc-action-btn {
+    padding: 5px 12px;
+    border: none; border-radius: var(--radius-sm);
+    font-family: var(--font); font-size: 10px; font-weight: 700;
+    cursor: pointer; transition: var(--transition);
+    text-transform: uppercase; letter-spacing: 0.3px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .vc-action-btn.install { background: var(--accent-gradient); color: #fff; }
+  .vc-action-btn.install:hover { box-shadow: 0 4px 16px rgba(124,58,237,0.3); }
+  .vc-action-btn.installed { background: rgba(34,197,94,0.15); color: var(--success); cursor: pointer; }
+  .vc-action-btn.installed:hover { background: rgba(34,197,94,0.25); }
+  .vc-action-btn.update { background: rgba(251,146,60,0.15); color: #FB923C; }
+  .vc-action-btn.update:hover { background: rgba(251,146,60,0.25); }
+
+  /* Card entrance animation */
+  .version-card { opacity: 0; transform: translateY(16px); }
+  .version-card.visible { opacity: 1; transform: translateY(0); transition: opacity 0.4s ease, transform 0.4s ease; }
+
+  /* Card placeholder gradient backgrounds */
+  .vc-bg-vanilla { background: linear-gradient(135deg, #1a1a2e, #2d1b69); }
+  .vc-bg-fabric { background: linear-gradient(135deg, #0d3b44, #1a1a2e); }
+  .vc-bg-forge { background: linear-gradient(135deg, #3d2210, #1a1a2e); }
+  .vc-bg { background: linear-gradient(135deg, #1a1a2e, #2d1b69); }
+
+  /* ===== DETAIL PANEL ===== */
+  .detail-panel {
+    width: 0; overflow: hidden;
+    transition: width 0.35s cubic-bezier(0.4,0,0.2,1);
+    background: rgba(10,10,20,0.6);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border-left: 1px solid var(--glass-border);
+    flex-shrink: 0;
+    display: flex; flex-direction: column;
+  }
+  .detail-panel.open { width: 320px; }
+
+  .dp-inner {
+    width: 320px; height: 100%;
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .dp-inner::-webkit-scrollbar { width: 4px; }
+  .dp-inner::-webkit-scrollbar-track { background: transparent; }
+  .dp-inner::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
+
+  .dp-cover {
+    height: 140px; flex-shrink: 0;
+    position: relative; overflow: hidden;
+  }
+  .dp-cover .dp-cover-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+  }
+  .dp-cover .dp-cover-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 30%, rgba(10,10,20,0.9));
+  }
+  .dp-cover .dp-close {
+    position: absolute; top: 10px; right: 10px;
+    width: 28px; height: 28px;
+    border-radius: 50%; border: none;
+    background: rgba(0,0,0,0.4);
+    color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition);
+    z-index: 2;
+  }
+  .dp-cover .dp-close:hover { background: rgba(0,0,0,0.6); transform: scale(1.1); }
+  .dp-cover .dp-close svg { width: 14px; height: 14px; }
+
+  .dp-body { padding: 16px 20px; flex: 1; }
+  .dp-body .dp-name { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .dp-body .dp-type { font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .dp-body .dp-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 16px; }
+
+  .dp-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .dp-info-item { background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); padding: 10px; }
+  .dp-info-item .dpi-label { font-size: 10px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
+  .dp-info-item .dpi-value { font-size: 13px; font-weight: 600; }
+
+  .dp-changelog { margin-bottom: 16px; }
+  .dp-changelog h4 { font-size: 13px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .dp-changelog h4 svg { width: 14px; height: 14px; color: var(--accent-cyan); }
+  .dp-changelog ul { padding-left: 16px; }
+  .dp-changelog li { font-size: 12px; color: var(--text-secondary); line-height: 1.6; }
+
+  .dp-actions { display: flex; gap: 8px; }
+  .dp-actions button {
+    flex: 1; padding: 10px; border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font); font-size: 13px; font-weight: 600;
+    cursor: pointer; transition: var(--transition);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .dp-btn-install { background: var(--accent-gradient); color: #fff; }
+  .dp-btn-install:hover { box-shadow: 0 4px 16px rgba(124,58,237,0.3); }
+  .dp-btn-delete { background: rgba(239,68,68,0.1); color: var(--danger); }
+  .dp-btn-delete:hover { background: rgba(239,68,68,0.2); }
+  .dp-btn-share { flex: 0 0 auto; width: 40px; background: rgba(6,182,212,0.1); color: var(--accent-cyan); }
+  .dp-btn-share:hover { background: rgba(6,182,212,0.2); }
+  .dp-share-code { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(124,58,237,0.06); border-radius: var(--radius-sm); margin-top: 8px; font-size: 12px; }
+  .dp-share-code .dpsc-label { color: var(--text-tertiary); }
+  .dp-share-code .dpsc-code { font-weight: 700; color: var(--accent-purple); letter-spacing: 1px; font-family: monospace; font-size: 14px; }
+  .dp-share-code .dpsc-copy { background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 2px; margin-left: auto; display: flex; }
+  .dp-share-code .dpsc-copy:hover { color: var(--text-primary); }
+  .dp-share-input { display: flex; gap: 6px; margin-top: 8px; }
+  .dp-share-input .input-wrap { margin-bottom: 0; }
+  .dp-btn-play {
+    background: rgba(34,197,94,0.12); color: var(--success);
+    cursor: pointer;
+  }
+  .dp-btn-play:hover { background: rgba(34,197,94,0.2); }
+
+  /* Drag & Drop Zones */
+  .dp-custom-section { margin-top: 16px; border-top: 1px solid var(--glass-border); padding-top: 12px; }
+  .dp-custom-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .dp-custom-tab {
+    flex: 1; padding: 6px 8px; border: 1px solid transparent; border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.03); color: var(--text-secondary); font-size: 11px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .dp-custom-tab:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+  .dp-custom-tab.active { background: rgba(124,58,237,0.12); color: var(--accent-purple); border-color: rgba(124,58,237,0.2); }
+  .dp-custom-panel { display: none; }
+  .dp-custom-panel.active { display: block; }
+  .dp-dropzone {
+    border: 1.5px dashed var(--glass-border); border-radius: var(--radius-sm);
+    padding: 14px 10px; text-align: center; cursor: default;
+    transition: all 0.25s ease; background: rgba(255,255,255,0.015);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .dp-dropzone svg { color: var(--text-tertiary); transition: color 0.25s; }
+  .dp-dropzone span { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+  .dp-dropzone small { font-size: 10px; color: var(--text-tertiary); }
+  .dp-dropzone.drag-over { border-color: var(--accent-purple); background: rgba(124,58,237,0.06); }
+  .dp-dropzone.drag-over svg { color: var(--accent-purple); }
+  .dp-file-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto; }
+  .dp-file-list::-webkit-scrollbar { width: 3px; }
+  .dp-file-list::-webkit-scrollbar-track { background: transparent; }
+  .dp-file-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
+  .dp-file-item {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 4px 8px; border-radius: 4px; background: rgba(255,255,255,0.02);
+    font-size: 11px;
+  }
+  .dp-file-item .dfi-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+  .dp-file-item .dfi-size { font-size: 10px; color: var(--text-tertiary); white-space: nowrap; }
+  .dp-file-item .dfi-del {
+    background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 2px;
+    display: flex; align-items: center; transition: color 0.2s;
+  }
+  .dp-file-item .dfi-del:hover { color: var(--danger); }
+  .dp-empty-files { font-size: 10px; color: var(--text-tertiary); text-align: center; padding: 6px 0; }
+
+  /* ============ ACCOUNTS PAGE ============ */
+  .accounts-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .account-card { display: flex; align-items: center; gap: 14px; padding: 14px 18px; }
+  .account-card .ac-avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+  .ac-avatar.ms { background: rgba(6,182,212,0.2); color: var(--accent-cyan); }
+  .ac-avatar.pirate { background: rgba(124,58,237,0.2); color: var(--accent-purple); }
+  .account-card .ac-info { flex: 1; }
+  .account-card .ac-info .ac-name { font-size: 14px; font-weight: 600; }
+  .account-card .ac-info .ac-type { font-size: 12px; color: var(--text-tertiary); }
+  .account-card .ac-actions { display: flex; gap: 6px; }
+  .account-card .ac-actions button { padding: 6px 10px; border: none; border-radius: 6px; font-family: var(--font); font-size: 11px; font-weight: 500; cursor: pointer; transition: var(--transition); }
+  .ac-actions .btn-primary-sm { background: rgba(124,58,237,0.15); color: var(--accent-purple); }
+  .ac-actions .btn-primary-sm:hover { background: rgba(124,58,237,0.25); }
+  .ac-actions .btn-danger-sm { background: rgba(239,68,68,0.12); color: var(--danger); }
+  .ac-actions .btn-danger-sm:hover { background: rgba(239,68,68,0.2); }
+  .btn-add-account { width: 100%; padding: 14px; border: 1px dashed var(--glass-border); background: transparent; border-radius: var(--radius-md); color: var(--text-secondary); font-family: var(--font); font-size: 14px; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-add-account:hover { border-color: var(--accent-purple); color: var(--accent-purple); background: rgba(124,58,237,0.04); }
+  .btn-add-account svg { width: 18px; height: 18px; }
+
+  /* ============ PROFILE PAGE ============ */
+  .profile-layout { display: flex; gap: 18px; }
+  .profile-avatar-section { width: 200px; flex-shrink: 0; padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .profile-avatar-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .profile-avatar { width: 100px; height: 100px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 700; color: #fff; overflow: hidden; position: relative; box-shadow: 0 0 24px rgba(124,58,237,0.25); }
+  .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-avatar-btn { font-size: 11px; padding: 5px 12px; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); border-radius: 50px; color: var(--text-secondary); cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 4px; font-family: var(--font); }
+  .profile-avatar-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+  .profile-online-status { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .profile-online-status .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .profile-fields { flex: 1; padding: 20px 24px; }
+  .profile-fields .form-group { margin-bottom: 14px; }
+  .profile-fields .input-wrap { width: 100%; }
+  .profile-fields .input-wrap.textarea-wrap { height: auto; }
+  .profile-fields textarea { width: 100%; background: transparent; border: none; outline: none; color: var(--text-primary); font-family: var(--font); font-size: 13px; padding: 8px 0; resize: vertical; min-height: 60px; }
+  .form-counter { font-size: 10px; color: var(--text-tertiary); text-align: right; margin-top: 2px; }
+  .profile-fav-versions { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+  .pfv-empty { font-size: 12px; color: var(--text-tertiary); font-style: italic; }
+  .pfv-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 10px; border-radius: 50px; background: rgba(124,58,237,0.12); color: var(--accent-purple); font-weight: 600; cursor: pointer; transition: var(--transition); }
+  .pfv-badge:hover { background: rgba(124,58,237,0.2); }
+  .pfv-badge .pfv-remove { cursor: pointer; opacity: 0.6; display: flex; }
+  .pfv-badge .pfv-remove:hover { opacity: 1; }
+
+  /* ============ FRIENDS PAGE ============ */
+  .friends-search-wrap { padding: 10px 14px; margin-bottom: 12px; position: relative; }
+  .friends-search-results { position: absolute; top: 100%; left: 0; right: 0; z-index: 10; background: var(--glass-bg); backdrop-filter: blur(20px); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto; display: none; }
+  .friends-search-results.visible { display: block; }
+  .fsr-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; cursor: pointer; transition: var(--transition); font-size: 13px; }
+  .fsr-item:hover { background: rgba(255,255,255,0.04); }
+  .fsr-item .fsr-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
+  .fsr-item .fsr-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .fsr-item .fsr-name { flex: 1; font-weight: 500; }
+  .fsr-item .fsr-add { font-size: 11px; padding: 3px 10px; border-radius: 50px; background: rgba(124,58,237,0.12); color: var(--accent-purple); border: none; cursor: pointer; font-family: var(--font); font-weight: 600; transition: var(--transition); }
+  .fsr-item .fsr-add:hover { background: rgba(124,58,237,0.25); }
+  .friends-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+  .friends-tab { flex: 1; padding: 8px 10px; border: 1px solid transparent; border-radius: var(--radius-sm); background: rgba(255,255,255,0.03); color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 4px; font-family: var(--font); }
+  .friends-tab:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+  .friends-tab.active { background: rgba(124,58,237,0.12); color: var(--accent-purple); border-color: rgba(124,58,237,0.2); }
+  .friends-panel { display: none; }
+  .friends-panel.active { display: block; }
+  .friends-list { display: flex; flex-direction: column; gap: 6px; max-height: 400px; overflow-y: auto; }
+  .friends-list::-webkit-scrollbar { width: 4px; }
+  .friends-list::-webkit-scrollbar-track { background: transparent; }
+  .friends-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
+  .friend-card { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,0.02); border-radius: var(--radius-sm); transition: var(--transition); }
+  .friend-card:hover { background: rgba(255,255,255,0.04); }
+  .friend-card .fc-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
+  .friend-card .fc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .friend-card .fc-info { flex: 1; min-width: 0; }
+  .friend-card .fc-name { font-size: 13px; font-weight: 600; }
+  .friend-card .fc-status { font-size: 11px; color: var(--text-tertiary); display: flex; align-items: center; gap: 4px; }
+  .friend-card .fc-status .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .friend-card .fc-status .dot.online { background: var(--success); }
+  .friend-card .fc-status .dot.offline { background: var(--text-tertiary); }
+  .friend-card .fc-status .dot.ingame { background: var(--accent-cyan); }
+  .friend-card .fc-actions { display: flex; gap: 4px; }
+  .friend-card .fc-actions button { background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; border-radius: 4px; transition: var(--transition); display: flex; align-items: center; }
+  .friend-card .fc-actions button:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+  .friend-card .fc-actions .fc-chat:hover { color: var(--accent-cyan); }
+  .friend-card .fc-actions .fc-invite:hover { color: var(--accent-purple); }
+  .friend-card .fc-actions .fc-remove:hover { color: var(--danger); }
+  .friends-requests { display: flex; flex-direction: column; gap: 6px; }
+  .fr-card { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: rgba(255,255,255,0.02); border-radius: var(--radius-sm); }
+  .fr-card .fr-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
+  .fr-card .fr-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .fr-card .fr-name { flex: 1; font-size: 13px; font-weight: 600; }
+  .fr-card .fr-actions { display: flex; gap: 4px; }
+  .fr-card .fr-actions button { padding: 5px 12px; border: none; border-radius: 6px; font-family: var(--font); font-size: 11px; font-weight: 600; cursor: pointer; transition: var(--transition); }
+  .fr-card .fr-accept { background: rgba(34,197,94,0.12); color: var(--success); }
+  .fr-card .fr-accept:hover { background: rgba(34,197,94,0.2); }
+  .fr-card .fr-decline { background: rgba(239,68,68,0.1); color: var(--danger); }
+  .fr-card .fr-decline:hover { background: rgba(239,68,68,0.2); }
+  .friends-chat-select { display: flex; flex-direction: column; gap: 4px; max-height: 300px; overflow-y: auto; }
+  .fcs-hint { font-size: 12px; color: var(--text-tertiary); text-align: center; padding: 20px; }
+  .fcs-item { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-radius: var(--radius-sm); cursor: pointer; transition: var(--transition); font-size: 13px; }
+  .fcs-item:hover { background: rgba(255,255,255,0.04); }
+  .fcs-item .fcs-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
+  .fcs-item .fcs-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .fcs-item .fcs-name { flex: 1; font-weight: 500; }
+  .friends-chat-active { display: flex; flex-direction: column; height: 340px; }
+  .fca-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+  .fca-name { font-size: 13px; font-weight: 600; }
+  .fca-close { background: none; border: none; color: var(--text-tertiary); cursor: pointer; padding: 4px; display: flex; }
+  .fca-close:hover { color: var(--text-primary); }
+  .fca-messages { flex: 1; overflow-y: auto; padding: 10px 14px; display: flex; flex-direction: column; gap: 6px; background: rgba(0,0,0,0.15); }
+  .fca-messages::-webkit-scrollbar { width: 4px; }
+  .fca-messages::-webkit-scrollbar-track { background: transparent; }
+  .fca-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 4px; }
+  .fca-message { max-width: 80%; padding: 6px 12px; border-radius: 12px; font-size: 12px; line-height: 1.4; word-wrap: break-word; }
+  .fca-message.mine { align-self: flex-end; background: rgba(124,58,237,0.15); color: var(--accent-purple); border-radius: 12px 12px 4px 12px; }
+  .fca-message.theirs { align-self: flex-start; background: rgba(255,255,255,0.04); color: var(--text-secondary); border-radius: 12px 12px 12px 4px; }
+  .fca-message .fca-msg-time { font-size: 9px; color: var(--text-tertiary); margin-top: 2px; text-align: right; }
+  .fca-input { display: flex; gap: 6px; padding: 8px 14px; background: rgba(255,255,255,0.02); border-radius: 0 0 var(--radius-sm) var(--radius-sm); align-items: flex-end; }
+  .fca-input .input-wrap { margin-bottom: 0; flex: 1; }
+  .fca-input textarea {
+    width: 100%; padding: 8px 12px; background: transparent; border: none; outline: none;
+    color: var(--text-primary); font-family: var(--font); font-size: 13px; line-height: 1.4;
+    resize: none; overflow-y: auto; min-height: 20px; max-height: 80px;
+  }
+  .fca-input textarea::placeholder { color: var(--text-tertiary); }
+  .fca-input .fca-send-btn {
+    flex: 0 0 auto; padding: 6px 10px; border: none; border-radius: var(--radius-sm);
+    background: var(--accent-gradient); color: #fff; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition);
+  }
+  .fca-input .fca-send-btn:hover { filter: brightness(1.15); }
+  .fca-input .fca-send-btn svg { width: 16px; height: 16px; }
+
+  /* ============ MY ACCOUNT PAGE ============ */
+  .account-header { display: flex; align-items: center; gap: 18px; margin-bottom: 18px; }
+  .acc-avatar-section { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .acc-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #fff; overflow: hidden; box-shadow: 0 0 24px rgba(124,58,237,0.25); }
+  .acc-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .acc-online-status { font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+  .acc-online-status .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .acc-info-section h3 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .acc-info-section .acc-status { font-size: 13px; color: var(--text-secondary); }
+  .account-details { padding: 18px 22px; margin-bottom: 16px; }
+  .acc-detail-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; }
+  .acc-detail-row + .acc-detail-row { border-top: 1px solid rgba(255,255,255,0.04); }
+  .acc-label { font-size: 12px; color: var(--text-tertiary); min-width: 120px; flex-shrink: 0; font-weight: 500; }
+  .acc-value { font-size: 13px; color: var(--text-primary); }
+  .account-actions { display: flex; gap: 8px; }
+
+  /* ============ FRIEND PROFILE MODAL ============ */
+  .friend-profile-modal { width: 380px; max-width: 90vw; padding: 28px; }
+  .fpm-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+  .fpm-avatar { width: 56px; height: 56px; border-radius: 50%; background: var(--accent-gradient); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: #fff; flex-shrink: 0; overflow: hidden; }
+  .fpm-avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .fpm-name { font-size: 16px; font-weight: 700; }
+  .fpm-status { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+  .fpm-status .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+  .fpm-body { margin-bottom: 18px; }
+  .fpm-body .fpm-bio { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .fpm-actions { display: flex; gap: 6px; flex-direction: column; }
+  .fpm-actions button { width: 100%; padding: 10px; border: none; border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 600; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .fpm-actions .fpm-chat { background: rgba(124,58,237,0.12); color: var(--accent-purple); }
+  .fpm-actions .fpm-chat:hover { background: rgba(124,58,237,0.2); }
+  .fpm-actions .fpm-remove { background: rgba(239,68,68,0.1); color: var(--danger); }
+  .fpm-actions .fpm-remove:hover { background: rgba(239,68,68,0.2); }
+  .fpm-actions .fpm-block { background: rgba(255,255,255,0.04); color: var(--text-secondary); }
+  .fpm-actions .fpm-block:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+
+  /* ============ SETTINGS PAGE ============ */
+  .settings-sections { display: flex; flex-direction: column; gap: 18px; }
+  .settings-group { padding: 20px 24px; }
+  .settings-group h4 { font-size: 14px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .settings-group h4 svg { width: 18px; height: 18px; color: var(--accent-cyan); }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; }
+  .setting-row + .setting-row { border-top: 1px solid rgba(255,255,255,0.03); }
+  .setting-row .sr-label { font-size: 13px; font-weight: 500; }
+  .setting-row .sr-desc { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+  .toggle-switch { width: 40px; height: 22px; border-radius: 50px; background: rgba(255,255,255,0.1); border: none; cursor: pointer; position: relative; transition: var(--transition); }
+  .toggle-switch.on { background: var(--accent-purple); box-shadow: 0 0 12px rgba(124,58,237,0.2); }
+  .toggle-switch .knob { width: 18px; height: 18px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: var(--transition); }
+  .toggle-switch.on .knob { left: 20px; }
+  .select-glass { padding: 8px 12px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font); font-size: 13px; cursor: pointer; outline: none; transition: var(--transition); min-width: 140px; }
+  .select-glass:focus { border-color: var(--accent-purple); }
+  .select-glass option { background: #1a1a2e; }
+  .about-info { display: flex; flex-direction: column; gap: 6px; }
+  .about-info .ver { font-size: 13px; color: var(--text-secondary); }
+  .about-info .ver strong { color: var(--text-primary); }
+  .about-links { display: flex; gap: 10px; margin-top: 10px; }
+  .about-links a { color: var(--text-tertiary); text-decoration: none; font-size: 13px; transition: var(--transition); display: flex; align-items: center; gap: 4px; }
+  .about-links a:hover { color: var(--accent-cyan); }
+
+  /* ============ MODALS ============ */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100;
+    display: none;
+    align-items: center; justify-content: center;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-overlay.open { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal { width: 440px; max-width: 90vw; padding: 32px; animation: modalSlide 0.25s ease; }
+  @keyframes modalSlide { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+  .modal .form-group { margin-bottom: 14px; }
+  .modal .form-group label { font-size: 12px; }
+  .modal .modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+  .modal .modal-actions .btn-primary { flex: 1; }
+  .btn-secondary { padding: 13px 20px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm); font-family: var(--font); font-size: 14px; font-weight: 500; cursor: pointer; transition: var(--transition); }
+  .btn-secondary:hover { border-color: var(--glass-border-hover); color: var(--text-primary); }
+
+  .account-type-select { display: flex; gap: 8px; margin-bottom: 16px; }
+  .account-type-select button { flex: 1; padding: 10px; border: 1px solid var(--glass-border); background: transparent; color: var(--text-secondary); border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px; font-weight: 500; cursor: pointer; transition: var(--transition); }
+  .account-type-select button.active { border-color: var(--accent-purple); color: #fff; background: rgba(124,58,237,0.1); }
+  .account-type-select button:hover { border-color: var(--glass-border-hover); }
+
+  /* ============ ANIMATIONS ============ */
+  .fade-in { animation: fadeIn 0.3s ease; }
+  .slide-up { animation: slideUp 0.3s ease; }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ============ SCROLLBAR ============ */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+
+  /* ============ TOAST ============ */
+  .toast-container {
+    position: fixed; bottom: 20px; right: 20px;
+    z-index: 200; display: flex; flex-direction: column; gap: 8px;
+  }
+  .toast {
+    padding: 12px 20px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500;
+    animation: slideInToast 0.3s ease;
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .toast.success { background: rgba(34,197,94,0.2); color: var(--success); border-color: rgba(34,197,94,0.15); }
+  .toast.error { background: rgba(239,68,68,0.2); color: var(--danger); border-color: rgba(239,68,68,0.15); }
+  .toast.info { background: rgba(6,182,212,0.2); color: var(--accent-cyan); border-color: rgba(6,182,212,0.15); }
+  @keyframes slideInToast { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 1100px) {
+    #app { border-radius: 0; }
+    .launcher-container { border: none; }
+    .versions-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 860px) {
+    .sidebar { width: 60px; padding: 12px 8px; }
+    .sidebar-logo span { display: none; }
+    .sidebar-user .su-info { display: none; }
+    .sidebar-nav-item span { display: none; }
+    .sidebar-nav-item { justify-content: center; }
+    .sidebar-play-btn span { display: none; }
+    .sidebar-play-btn { justify-content: center; }
+    .sidebar-footer { display: flex; flex-direction: column; align-items: center; }
+    .sidebar-version { display: none; }
+    .sidebar-logout span { display: none; }
+    .sidebar-logout { justify-content: center; }
+    .detail-panel.open { width: 260px; }
+    .dp-inner { width: 260px; }
+  }
+  @media (max-width: 640px) {
+    .detail-panel.open { width: 100%; position: absolute; right: 0; z-index: 10; }
+    .search-wrap { width: 120px; }
+    .filter-chips { display: none; }
+    .versions-grid { grid-template-columns: 1fr; }
+    .versions-grid-wrap { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div id="app">
+
+    <!-- ===== CUSTOM TITLE BAR ===== -->
+    <div class="titlebar">
+      <div class="titlebar-title">
+        <svg viewBox="0 0 48 48" fill="none" width="18" height="18">
+          <rect x="4" y="4" width="40" height="40" rx="12" fill="url(#tbGrad)" opacity="0.9"/>
+          <path d="M16 30V18l8 6-8 6zM24 30V18l8 6-8 6z" fill="#fff" opacity="0.9"/>
+          <defs><linearGradient id="tbGrad" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#7C3AED"/><stop offset="1" stop-color="#06B6D4"/></linearGradient></defs>
+        </svg>
+        Oasis Launcher
+      </div>
+      <div class="titlebar-actions">
+        <button class="titlebar-btn" onclick="minimizeWindow()">
+          <i data-lucide="minus" width="16" height="16"></i>
+        </button>
+        <button class="titlebar-btn close" onclick="closeWindow()">
+          <i data-lucide="x" width="16" height="16"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-blobs">
+      <div class="blob blob-1"></div>
+      <div class="blob blob-2"></div>
+      <div class="blob blob-3"></div>
+      <div class="blob blob-4"></div>
+    </div>
+
+    <div class="launcher-container">
+
+      <!-- ===== AUTH SCREEN ===== -->
+      <div class="screen-auth" id="screenAuth">
+        <div class="auth-left">
+          <div class="auth-brand">
+            <svg viewBox="0 0 48 48" fill="none">
+              <rect x="4" y="4" width="40" height="40" rx="12" fill="url(#brandGrad)" opacity="0.9"/>
+              <path d="M16 30V18l8 6-8 6zM24 30V18l8 6-8 6z" fill="#fff" opacity="0.9"/>
+              <defs><linearGradient id="brandGrad" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#7C3AED"/><stop offset="1" stop-color="#06B6D4"/></linearGradient></defs>
+            </svg>
+            <h1>Oasis Launcher</h1>
+          </div>
+          <div class="auth-form" id="authForm">
+            <div class="auth-tabs">
+              <button class="auth-tab active" data-tab="login">Вход</button>
+              <button class="auth-tab" data-tab="register">Регистрация</button>
+            </div>
+            <div id="formLogin">
+              <div class="form-group">
+                <label>Email</label>
+                <div class="input-wrap">
+                  <i data-lucide="mail" class="icon"></i>
+                  <input type="email" placeholder="your@email.com" id="loginEmail">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Пароль</label>
+                <div class="input-wrap">
+                  <i data-lucide="lock" class="icon"></i>
+                  <input type="password" placeholder="••••••••" id="loginPassword">
+                  <button class="toggle-pw" onclick="togglePassword(this)" type="button">
+                    <i data-lucide="eye" width="16" height="16"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+                <input type="checkbox" id="rememberMe" checked style="width:16px;height:16px;accent-color:var(--accent-purple);cursor:pointer">
+                <label for="rememberMe" style="font-size:13px;color:var(--text-secondary);cursor:pointer">Запомнить меня</label>
+              </div>
+              <button class="btn-primary" onclick="handleLogin()">
+                <span class="btn-text">Войти</span>
+              </button>
+              <div class="auth-error" id="loginError"></div>
+              <div class="auth-links">
+                <a href="#" onclick="event.preventDefault(); showToast('Функция восстановления пароля', 'info')">Забыли пароль?</a>
+                <span style="color:var(--text-tertiary);margin:0 6px">·</span>
+                <a href="#" onclick="event.preventDefault(); forgetSavedLogin()">Сбросить сохранённый вход</a>
+              </div>
+            </div>
+            <div id="formRegister" style="display:none">
+              <div class="form-group">
+                <label>Никнейм</label>
+                <div class="input-wrap">
+                  <i data-lucide="user" class="icon"></i>
+                  <input type="text" placeholder="YourNick" id="regNick">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <div class="input-wrap">
+                  <i data-lucide="mail" class="icon"></i>
+                  <input type="email" placeholder="your@email.com" id="regEmail">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Пароль</label>
+                <div class="input-wrap">
+                  <i data-lucide="lock" class="icon"></i>
+                  <input type="password" placeholder="••••••••" id="regPassword">
+                  <button class="toggle-pw" onclick="togglePassword(this)" type="button">
+                    <i data-lucide="eye" width="16" height="16"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Подтверждение пароля</label>
+                <div class="input-wrap">
+                  <i data-lucide="lock" class="icon"></i>
+                  <input type="password" placeholder="••••••••" id="regPasswordConfirm">
+                </div>
+              </div>
+              <button class="btn-primary" onclick="handleRegister()">Создать аккаунт</button>
+              <div class="auth-error" id="regError"></div>
+              <div class="auth-links" style="margin-top:14px">
+                <span style="color:var(--text-tertiary);font-size:12px">Нажимая кнопку, вы соглашаетесь с условиями</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="auth-right">
+          <div class="blob-decoration"></div>
+          <div class="blob-decoration-2"></div>
+          <svg class="mc-logo" viewBox="0 0 120 120" fill="none">
+            <rect x="10" y="10" width="100" height="100" rx="28" fill="rgba(124,58,237,0.08)" stroke="rgba(124,58,237,0.15)" stroke-width="1"/>
+            <path d="M40 50l20-14 20 14v30H60V70H50v10H40V50z" fill="rgba(124,58,237,0.5)"/>
+            <path d="M60 36l20 14v30H60V36z" fill="rgba(6,182,212,0.4)"/>
+            <rect x="44" y="56" width="6" height="6" rx="1" fill="rgba(255,255,255,0.3)"/>
+            <rect x="54" y="56" width="6" height="6" rx="1" fill="rgba(255,255,255,0.3)"/>
+          </svg>
+          <h2>Ваш идеальный старт</h2>
+          <p>Автоматическая установка модов, шейдеров и управление всеми версиями Minecraft в одном месте.</p>
+          <div class="features">
+            <div class="feat"><i data-lucide="check-circle" width="18" height="18"></i> Microsoft и пиратские аккаунты</div>
+            <div class="feat"><i data-lucide="package" width="18" height="18"></i> Fabric, Forge и Vanilla — одним кликом</div>
+            <div class="feat"><i data-lucide="sparkles" width="18" height="18"></i> Встроенные шейдеры и Liquid Glass дизайн</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MAIN SCREEN ===== -->
+      <div class="screen-main" id="screenMain">
+        <div class="main-layout">
+
+          <!-- ===== SIDEBAR ===== -->
+          <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+              <svg viewBox="0 0 48 48" fill="none">
+                <rect x="4" y="4" width="40" height="40" rx="12" fill="url(#brandGrad3)" opacity="0.9"/>
+                <path d="M16 30V18l8 6-8 6zM24 30V18l8 6-8 6z" fill="#fff" opacity="0.9"/>
+                <defs><linearGradient id="brandGrad3" x1="0" y1="0" x2="48" y2="48"><stop stop-color="#7C3AED"/><stop offset="1" stop-color="#06B6D4"/></linearGradient></defs>
+              </svg>
+              <span style="background:var(--accent-gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Oasis</span>
+            </div>
+
+            <div class="sidebar-user" onclick="switchPage('account')">
+              <div class="avatar" id="sidebarAvatar">S</div>
+              <div class="su-info">
+                <div class="su-name" id="sidebarName">Steve</div>
+                <div class="su-status"><span class="dot"></span> В сети</div>
+              </div>
+            </div>
+
+            <button class="sidebar-play-btn" onclick="handlePlay()">
+              <span class="glow"></span>
+              <i data-lucide="play"></i>
+              <span>Играть</span>
+            </button>
+
+            <nav class="sidebar-nav">
+              <button class="sidebar-nav-item active" data-page="dashboard" onclick="switchPage('dashboard')">
+                <i data-lucide="layout-grid"></i>
+                <span>Мои версии</span>
+              </button>
+              <button class="sidebar-nav-item" data-page="profile" onclick="switchPage('profile')">
+                <i data-lucide="user-circle"></i>
+                <span>Профиль</span>
+              </button>
+              <button class="sidebar-nav-item" data-page="friends" onclick="switchPage('friends')">
+                <i data-lucide="user-plus"></i>
+                <span>Друзья</span>
+                <span class="sidebar-badge" id="friendsBadge" style="display:none">0</span>
+              </button>
+              <button class="sidebar-nav-item" data-page="accounts" onclick="switchPage('accounts')">
+                <i data-lucide="users"></i>
+                <span>Аккаунты</span>
+              </button>
+              <button class="sidebar-nav-item" data-page="settings" onclick="switchPage('settings')">
+                <i data-lucide="settings"></i>
+                <span>Настройки</span>
+              </button>
+              <button class="sidebar-nav-item" data-page="news" onclick="switchPage('news')">
+                <i data-lucide="newspaper"></i>
+                <span>Новости</span>
+              </button>
+            </nav>
+
+            <div class="sidebar-footer">
+              <div class="sidebar-version">Oasis v1.0.0 · Сборка #20260530</div>
+              <button class="sidebar-logout" onclick="logout()" style="margin-bottom:2px">
+                <i data-lucide="log-out"></i>
+                <span>Выйти</span>
+              </button>
+              <button class="sidebar-logout" onclick="logoutAndForget()" style="color:var(--text-tertiary);font-size:11px">
+                <i data-lucide="trash-2" width="14" height="14"></i>
+                <span>Забыть данные</span>
+              </button>
+            </div>
+          </aside>
+
+          <!-- ===== CENTER ===== -->
+          <div class="main-center">
+
+            <!-- TOP HEADER -->
+            <div class="top-header">
+              <h2 id="pageTitle">Мои версии</h2>
+              <div class="th-actions">
+                <div class="search-wrap">
+                  <i data-lucide="search"></i>
+                  <input type="text" placeholder="Поиск версий..." id="searchInput" oninput="filterVersions()">
+                </div>
+                <div class="filter-chips" id="filterChips">
+                  <button class="filter-chip active" data-filter="all" onclick="setFilter('all', this)">Все</button>
+                  <button class="filter-chip" data-filter="vanilla" onclick="setFilter('vanilla', this)">Официальные</button>
+                  <button class="filter-chip" data-filter="offline" onclick="setFilter('offline', this)">Пиратка</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- PAGE WRAPPER -->
+            <div class="page-wrapper">
+
+              <!-- ===== GRID PAGE (DASHBOARD) ===== -->
+              <div class="grid-page visible" id="pageDashboard">
+                <div class="versions-grid-wrap" id="versionsGridWrap">
+                  <div class="versions-grid" id="versionsGrid">
+                    <!-- Version cards rendered by JS -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- ===== ACCOUNTS PAGE ===== -->
+              <div class="page" id="pageAccounts">
+                <div class="section-header" style="margin-bottom:18px">
+                  <h3>Управление аккаунтами</h3>
+                </div>
+                <div class="accounts-list" id="accountsList"></div>
+                <button class="btn-add-account" onclick="openAddAccountModal()">
+                  <i data-lucide="plus-circle"></i>
+                  Добавить аккаунт
+                </button>
+              </div>
+
+              <!-- ===== SETTINGS PAGE ===== -->
+              <div class="page" id="pageSettings">
+                <div class="section-header" style="margin-bottom:18px">
+                  <h3>Настройки</h3>
+                </div>
+                <div class="settings-sections">
+                  <div class="settings-group glass">
+                    <h4><i data-lucide="globe"></i> Общие</h4>
+                    <div class="setting-row">
+                      <div><div class="sr-label">Язык интерфейса</div><div class="sr-desc">Выберите язык лаунчера</div></div>
+                      <select id="langSelect" class="select-glass" onchange="handleLangChange(this)"><option value="ru">Русский</option><option value="en">English</option></select>
+                    </div>
+                    <div class="setting-row">
+                      <div><div class="sr-label">Закрывать лаунчер после запуска игры</div><div class="sr-desc">Освобождает память после старта Minecraft</div></div>
+                      <button class="toggle-switch on" onclick="this.classList.toggle('on')"><span class="knob"></span></button>
+                    </div>
+                    <div class="setting-row">
+                      <div><div class="sr-label">Показывать консоль</div><div class="sr-desc">Отладка и логи запуска</div></div>
+                      <button class="toggle-switch" onclick="this.classList.toggle('on')"><span class="knob"></span></button>
+                    </div>
+                  </div>
+                  <div class="settings-group glass">
+                    <h4><i data-lucide="folder"></i> Пути и хранилище</h4>
+                    <div class="setting-row">
+                      <div><div class="sr-label">Папка установки Minecraft</div><div class="sr-desc">Директория с версиями, модами и сейвами</div></div>
+                      <button class="btn-ghost" onclick="showToast('Выбор папки', 'info')"><i data-lucide="folder-open"></i> Обзор</button>
+                    </div>
+                  </div>
+                  <div class="settings-group glass">
+                    <h4><i data-lucide="rotate-ccw"></i> Обновления</h4>
+                    <div class="setting-row">
+                      <div><div class="sr-label">Автообновление лаунчера</div><div class="sr-desc">Автоматически проверять и устанавливать обновления</div></div>
+                      <button class="toggle-switch on" onclick="this.classList.toggle('on')"><span class="knob"></span></button>
+                    </div>
+                  </div>
+                  <div class="settings-group glass">
+                    <h4><i data-lucide="info"></i> О программе</h4>
+                    <div class="about-info">
+                      <div class="ver">Oasis Launcher <strong>v1.0.0</strong></div>
+                      <div class="ver">Сборка <strong>#20260530</strong></div>
+                    </div>
+                    <div class="about-links">
+                      <a href="#" onclick="event.preventDefault();showToast('Ссылка на Discord','info')"><i data-lucide="message-circle" width="14" height="14"></i> Discord</a>
+                      <a href="#" onclick="event.preventDefault();showToast('Сайт','info')"><i data-lucide="globe" width="14" height="14"></i> Сайт</a>
+                       <a href="#" onclick="event.preventDefault();showToast('GitHub','info')"><i data-lucide="external-link" width="14" height="14"></i> GitHub</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ===== PROFILE PAGE ===== -->
+              <div class="page" id="pageProfile">
+                <div class="section-header" style="margin-bottom:18px">
+                  <h3>Мой профиль</h3>
+                </div>
+                <div class="profile-layout">
+                  <div class="profile-avatar-section glass">
+                    <div class="profile-avatar-wrap">
+                      <div class="profile-avatar" id="profileAvatar">
+                        <span id="profileAvatarLetter">S</span>
+                        <img id="profileAvatarImg" style="display:none" alt="avatar">
+                      </div>
+                      <button class="profile-avatar-btn" onclick="openAvatarPicker()">
+                        <i data-lucide="camera" width="14" height="14"></i> Изменить
+                      </button>
+                      <input type="file" id="avatarFileInput" accept="image/jpeg,image/png" style="display:none" onchange="uploadAvatar(this)">
+                    </div>
+                    <div class="profile-online-status">
+                      <span class="dot" style="background:var(--success)"></span> В сети
+                    </div>
+                  </div>
+
+                  <div class="profile-fields glass">
+                    <div class="form-group">
+                      <label>Никнейм</label>
+                      <div class="input-wrap">
+                        <i data-lucide="user" class="icon"></i>
+                        <input type="text" id="profileNick" placeholder="Ваш никнейм" maxlength="32">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>Статус</label>
+                      <div class="input-wrap">
+                        <i data-lucide="quote" class="icon"></i>
+                        <input type="text" id="profileStatus" placeholder="Ваш статус" maxlength="100">
+                      </div>
+                    </div>
+                    <div class="form-group">
+                      <label>О себе</label>
+                      <div class="input-wrap textarea-wrap">
+                        <textarea id="profileBio" placeholder="Расскажите о себе..." maxlength="500" rows="3"></textarea>
+                      </div>
+                      <div class="form-counter"><span id="profileBioCount">0</span>/500</div>
+                    </div>
+                    <div class="form-group">
+                      <label>Любимые версии (до 3)</label>
+                      <div class="profile-fav-versions" id="profileFavVersions">
+                        <span class="pfv-empty">Выберите из установленных</span>
+                      </div>
+                    </div>
+                    <button class="btn-primary" onclick="saveProfile()" style="margin-top:4px;font-size:13px">
+                      <i data-lucide="save" width="16" height="16"></i> Сохранить
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ===== FRIENDS PAGE ===== -->
+              <div class="page" id="pageFriends">
+                <div class="section-header" style="margin-bottom:18px">
+                  <h3>Друзья</h3>
+                </div>
+
+                <!-- Search -->
+                <div class="friends-search-wrap glass">
+                  <div class="input-wrap" style="flex:1">
+                    <i data-lucide="search" class="icon"></i>
+                    <input type="text" id="friendsSearchInput" placeholder="Поиск по нику..." oninput="debouncedFriendSearch()">
+                  </div>
+                  <div class="friends-search-results" id="friendsSearchResults"></div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="friends-tabs">
+                  <button class="friends-tab active" data-ftab="friends" onclick="switchFriendsTab('friends')">
+                    <i data-lucide="users" width="14" height="14"></i> Мои друзья
+                  </button>
+                  <button class="friends-tab" data-ftab="requests" onclick="switchFriendsTab('requests')">
+                    <i data-lucide="mail" width="14" height="14"></i> Запросы
+                    <span class="sidebar-badge" id="requestsBadge" style="display:none">0</span>
+                  </button>
+                  <button class="friends-tab" data-ftab="chat" onclick="switchFriendsTab('chat')">
+                    <i data-lucide="message-square" width="14" height="14"></i> Чат
+                  </button>
+                </div>
+
+                <div class="friends-panels">
+                  <!-- Friend list -->
+                  <div class="friends-panel active" id="friendsPanel-friends">
+                    <div class="friends-list" id="friendsList"></div>
+                  </div>
+
+                  <!-- Requests -->
+                  <div class="friends-panel" id="friendsPanel-requests">
+                    <div class="friends-requests" id="friendsRequestsList"></div>
+                  </div>
+
+                  <!-- Chat -->
+                  <div class="friends-panel" id="friendsPanel-chat">
+                    <div class="friends-chat-select" id="friendsChatSelect">
+                      <div class="fcs-hint">Выберите друга для чата</div>
+                    </div>
+                    <div class="friends-chat-active" id="friendsChatActive" style="display:none">
+                      <div class="fca-header">
+                        <div class="fca-name" id="chatFriendName">—</div>
+                        <button class="fca-close" onclick="closeChat()"><i data-lucide="x" width="14" height="14"></i></button>
+                      </div>
+                      <div class="fca-messages" id="chatMessages"></div>
+                      <div class="fca-input">
+                        <textarea id="chatInput" placeholder="Написать сообщение..." maxlength="1000" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage()}" oninput="autoResizeChat(this)"></textarea>
+                        <button class="fca-send-btn" onclick="sendChatMessage()" title="Отправить">
+                          <i data-lucide="send"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ===== MY ACCOUNT PAGE ===== -->
+              <div class="page" id="pageAccount">
+                <div class="account-header">
+                  <div class="acc-avatar-section">
+                    <div class="acc-avatar" id="accAvatar">
+                      <span id="accAvatarLetter">S</span>
+                      <img id="accAvatarImg" style="display:none" alt="avatar">
+                    </div>
+                    <div class="acc-online-status">
+                      <span class="dot" style="background:var(--success)"></span> В сети
+                    </div>
+                  </div>
+                  <div class="acc-info-section">
+                    <h3 id="accDisplayName">Steve</h3>
+                    <p class="acc-status" id="accDisplayStatus">—</p>
+                  </div>
+                </div>
+
+                <div class="account-details glass">
+                  <div class="acc-detail-row">
+                    <span class="acc-label">О себе</span>
+                    <span class="acc-value" id="accDisplayBio">Не заполнено</span>
+                  </div>
+                  <div class="acc-detail-row">
+                    <span class="acc-label">Любимые версии</span>
+                    <span class="acc-value" id="accDisplayFavs">Нет</span>
+                  </div>
+                  <div class="acc-detail-row">
+                    <span class="acc-label">Аккаунтов</span>
+                    <span class="acc-value" id="accDisplayAccounts">0</span>
+                  </div>
+                </div>
+
+                <div class="account-actions">
+                  <button class="btn-primary" onclick="switchPage('profile')" style="font-size:13px">
+                    <i data-lucide="edit-3" width="16" height="16"></i> Редактировать профиль
+                  </button>
+                </div>
+              </div>
+
+            </div><!-- /page-wrapper -->
+          </div><!-- /main-center -->
+
+          <!-- ===== DETAIL PANEL ===== -->
+          <div class="detail-panel" id="detailPanel">
+            <div class="dp-inner">
+              <div class="dp-cover">
+                <div class="dp-cover-bg" id="dpCoverBg"></div>
+                <div class="dp-cover-overlay"></div>
+                <button class="dp-close" onclick="closeDetail()">
+                  <i data-lucide="x"></i>
+                </button>
+              </div>
+              <div class="dp-body">
+                <div class="dp-name" id="dpName">Версия</div>
+                <div class="dp-type" id="dpType"><span class="vc-badge" id="dpBadge">Vanilla</span> · 1.21.4</div>
+                <div class="dp-desc" id="dpDesc">Описание версии</div>
+
+                <div class="dp-info-grid">
+                  <div class="dp-info-item">
+                    <div class="dpi-label">Версия Minecraft</div>
+                    <div class="dpi-value" id="dpMcVer">—</div>
+                  </div>
+                  <div class="dp-info-item">
+                    <div class="dpi-label">Размер</div>
+                    <div class="dpi-value" id="dpSize">—</div>
+                  </div>
+                  <div class="dp-info-item">
+                    <div class="dpi-label">Загрузчик</div>
+                    <div class="dpi-value" id="dpLoader">—</div>
+                  </div>
+                  <div class="dp-info-item">
+                    <div class="dpi-label">Дата выхода</div>
+                    <div class="dpi-value" id="dpDate">—</div>
+                  </div>
+                </div>
+
+                <div class="dp-changelog">
+                  <h4><i data-lucide="list"></i> Список изменений</h4>
+                  <ul id="dpChangelog">
+                    <li>Загрузка данных...</li>
+                  </ul>
+                </div>
+
+                <div class="dp-actions" id="dpActions">
+                  <button class="dp-btn-install" id="dpInstallBtn" onclick="installFromDetail()">
+                    <i data-lucide="download"></i> Установить
+                  </button>
+                  <button class="dp-btn-share" id="dpShareBtn" onclick="shareBuild()" title="Поделиться сборкой">
+                    <i data-lucide="share-2"></i>
+                  </button>
+                  <button class="dp-btn-delete" onclick="showToast('Удаление', 'info')">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                </div>
+                <div class="dp-share-code" id="dpShareCode" style="display:none">
+                  <span class="dpsc-label">Код сборки:</span>
+                  <span class="dpsc-code" id="shareCodeDisplay"></span>
+                  <button class="dpsc-copy" onclick="copyShareCode()" title="Копировать"><i data-lucide="copy" width="12" height="12"></i></button>
+                </div>
+
+                <!-- Share code input for installing from code -->
+                <div class="dp-share-input">
+                  <div class="input-wrap" style="flex:1">
+                    <i data-lucide="key-round" class="icon"></i>
+                    <input type="text" id="shareCodeInput" placeholder="Ввести код сборки..." maxlength="8" style="text-transform:uppercase">
+                  </div>
+                  <button class="btn-primary" onclick="installSharedBuild()" style="padding:8px 14px;font-size:12px;flex:0 0 auto">
+                    <i data-lucide="download" width="14" height="14"></i>
+                  </button>
+                </div>
+
+                <!-- ===== DRAG & DROP ZONES ===== -->
+                <div class="dp-custom-section">
+                  <div class="dp-custom-tabs">
+                    <button class="dp-custom-tab active" data-cat="mods" onclick="switchCustomTab('mods')">
+                      <i data-lucide="package" width="14" height="14"></i> Моды
+                    </button>
+                    <button class="dp-custom-tab" data-cat="shaderpacks" onclick="switchCustomTab('shaderpacks')">
+                      <i data-lucide="image" width="14" height="14"></i> Шейдеры
+                    </button>
+                    <button class="dp-custom-tab" data-cat="resourcepacks" onclick="switchCustomTab('resourcepacks')">
+                      <i data-lucide="layers" width="14" height="14"></i> Ресурспаки
+                    </button>
+                  </div>
+                  <div class="dp-custom-panels">
+                    <div class="dp-custom-panel active" id="dpPanel-mods">
+                      <div class="dp-dropzone" data-category="mods" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+                        <i data-lucide="upload-cloud" width="24" height="24"></i>
+                        <span>Перетащите .jar файлы сюда</span>
+                        <small>Моды для Fabric / Forge</small>
+                      </div>
+                      <div class="dp-file-list" id="dpFileList-mods"></div>
+                    </div>
+                    <div class="dp-custom-panel" id="dpPanel-shaderpacks">
+                      <div class="dp-dropzone" data-category="shaderpacks" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+                        <i data-lucide="upload-cloud" width="24" height="24"></i>
+                        <span>Перетащите шейдерпаки сюда</span>
+                        <small>.zip файлы шейдеров</small>
+                      </div>
+                      <div class="dp-file-list" id="dpFileList-shaderpacks"></div>
+                    </div>
+                    <div class="dp-custom-panel" id="dpPanel-resourcepacks">
+                      <div class="dp-dropzone" data-category="resourcepacks" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+                        <i data-lucide="upload-cloud" width="24" height="24"></i>
+                        <span>Перетащите ресурспаки сюда</span>
+                        <small>.zip файлы ресурспаков</small>
+                      </div>
+                      <div class="dp-file-list" id="dpFileList-resourcepacks"></div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /main-layout -->
+      </div><!-- /screen-main -->
+
+    </div><!-- /launcher-container -->
+  </div><!-- /app -->
+
+  <!-- ===== MODAL: Add Account ===== -->
+  <div class="modal-overlay" id="addAccountModal">
+    <div class="modal glass">
+      <h3>Добавить аккаунт</h3>
+      <div class="account-type-select">
+        <button class="active" data-atype="ms" onclick="selectAccountType(this, 'ms')">
+          <i data-lucide="monitor" width="16" height="16"></i> Microsoft
+        </button>
+        <button data-atype="pirate" onclick="selectAccountType(this, 'pirate')">
+          <i data-lucide="user" width="16" height="16"></i> Пиратский
+        </button>
+      </div>
+      <div id="msAccountForm">
+        <div class="form-group">
+          <label>Авторизация Microsoft</label>
+          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:6px">Нажмите кнопку ниже, чтобы открыть браузер и авторизоваться</p>
+        </div>
+        <button class="btn-primary" onclick="showToast('Открываем браузер для авторизации...', 'info')" style="font-size:13px">
+          <i data-lucide="external-link" width="16" height="16" style="vertical-align:middle;margin-right:6px"></i> Войти через Microsoft
+        </button>
+      </div>
+      <div id="pirateAccountForm" style="display:none">
+        <div class="form-group">
+          <label>Никнейм</label>
+          <div class="input-wrap">
+            <i data-lucide="user" class="icon"></i>
+            <input type="text" placeholder="Введите ник" id="pirateNick">
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal('addAccountModal')">Отмена</button>
+        <button class="btn-primary" onclick="addAccount()">Добавить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== FRIEND PROFILE MODAL ===== -->
+  <div class="modal-overlay" id="friendProfileModal">
+    <div class="modal glass friend-profile-modal">
+      <div class="fpm-header">
+        <div class="fpm-avatar" id="fpmAvatar">S</div>
+        <div>
+          <div class="fpm-name" id="fpmName">—</div>
+          <div class="fpm-status" id="fpmStatus"><span class="dot"></span> —</div>
+        </div>
+      </div>
+      <div class="fpm-body">
+        <p class="fpm-bio" id="fpmBio">Нет информации</p>
+      </div>
+      <div class="fpm-actions">
+        <button class="fpm-chat" id="fpmChatBtn" onclick="friendProfileChat()">
+          <i data-lucide="message-square" width="16" height="16"></i> Чат
+        </button>
+        <button class="fpm-remove" id="fpmRemoveBtn" onclick="friendProfileRemove()">
+          <i data-lucide="user-x" width="16" height="16"></i> Удалить из друзей
+        </button>
+        <button class="fpm-block" id="fpmBlockBtn" onclick="friendProfileBlock()">
+          <i data-lucide="shield-off" width="16" height="16"></i> Заблокировать
+        </button>
+        <button class="btn-secondary" onclick="closeModal('friendProfileModal')" style="width:100%;margin-top:4px">
+          Закрыть
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // DATA
+    // ============================================
+    const VERSIONS = [
+      // ===== VANILLA OFFICIAL VERSIONS (1.16.5 – 1.21) =====
+      { id: 'v1.21',     name: '1.21',     category: 'vanilla', type: 'vanilla', desc: 'Последняя официальная версия Minecraft с новыми блоками и механиками.', mcVersion: '1.21',     size: '120 MB', date: '2025-06-11', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.21', 'Официальная'], changelog: ['Медная дверь и люк', 'Новые блоки испытаний', 'Экспериментальные функции'] },
+      { id: 'v1.20.6',   name: '1.20.6',   category: 'vanilla', type: 'vanilla', desc: 'Обновление 1.20.6 с исправлениями и новыми возможностями.', mcVersion: '1.20.6',   size: '110 MB', date: '2025-05-15', installed: true,  progress: 100, loader: null, hasVisualMods: true,  tags: ['1.20.6', 'Официальная'], changelog: ['Исправления багов', 'Оптимизация производительности'] },
+      { id: 'v1.20.4',   name: '1.20.4',   category: 'vanilla', type: 'vanilla', desc: 'Стабильная версия с поддержкой шейдеров и модов.', mcVersion: '1.20.4',   size: '105 MB', date: '2024-04-23', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.20.4', 'Официальная'], changelog: ['Armadillo и Wolf Armor', 'Исправления багов'] },
+      { id: 'v1.20.2',   name: '1.20.2',   category: 'vanilla', type: 'vanilla', desc: 'Обновление с новыми функциями и оптимизацией.', mcVersion: '1.20.2',   size: '105 MB', date: '2023-09-21', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.20.2', 'Официальная'], changelog: ['Исправления', 'Оптимизация'] },
+      { id: 'v1.20.1',   name: '1.20.1',   category: 'vanilla', type: 'vanilla', desc: 'Первое крупное обновление Trails & Tales.', mcVersion: '1.20.1',   size: '105 MB', date: '2023-06-12', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.20.1', 'Официальная'], changelog: ['Археология', 'Вишнёвая роща', 'Снаряжение для брони'] },
+      { id: 'v1.20',     name: '1.20',     category: 'vanilla', type: 'vanilla', desc: 'Trails & Tales — исследование и творчество.', mcVersion: '1.20',     size: '105 MB', date: '2023-06-07', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.20', 'Официальная'], changelog: ['Археология', 'Вишнёвая роща', 'Снаряжение для брони'] },
+      { id: 'v1.19.4',   name: '1.19.4',   category: 'vanilla', type: 'vanilla', desc: 'Обновление The Wild Update с улучшениями.', mcVersion: '1.19.4',   size: '100 MB', date: '2023-03-14', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.19.4', 'Официальная'], changelog: ['Улучшения', 'Исправления'] },
+      { id: 'v1.19.3',   name: '1.19.3',   category: 'vanilla', type: 'vanilla', desc: 'Исправления и оптимизация The Wild Update.', mcVersion: '1.19.3',   size: '100 MB', date: '2022-12-07', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.19.3', 'Официальная'], changelog: ['Исправления багов'] },
+      { id: 'v1.19.2',   name: '1.19.2',   category: 'vanilla', type: 'vanilla', desc: 'Стабильная версия The Wild Update с модоподдержкой.', mcVersion: '1.19.2',   size: '100 MB', date: '2022-08-05', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.19.2', 'Официальная'], changelog: ['Warden', 'Ancient City', 'Frog', 'Mangrove'] },
+      { id: 'v1.19.1',   name: '1.19.1',   category: 'vanilla', type: 'vanilla', desc: 'Небольшое обновление The Wild Update.', mcVersion: '1.19.1',   size: '100 MB', date: '2022-07-27', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.19.1', 'Официальная'], changelog: ['Исправления'] },
+      { id: 'v1.19',     name: '1.19',     category: 'vanilla', type: 'vanilla', desc: 'The Wild Update — глубокий тёмный лес и лягушки.', mcVersion: '1.19',     size: '100 MB', date: '2022-06-07', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.19', 'Официальная'], changelog: ['Warden', 'Ancient City', 'Frog', 'Mangrove'] },
+      { id: 'v1.18.2',   name: '1.18.2',   category: 'vanilla', type: 'vanilla', desc: 'Caves & Cliffs — финальное стабильное обновление.', mcVersion: '1.18.2',   size: '95 MB',  date: '2022-02-28', installed: true,  progress: 100, loader: null, hasVisualMods: true,  tags: ['1.18.2', 'Официальная'], changelog: ['Новые пещеры', 'Новые горы', 'Обновлённый мир'] },
+      { id: 'v1.18.1',   name: '1.18.1',   category: 'vanilla', type: 'vanilla', desc: 'Caves & Cliffs — исправления.', mcVersion: '1.18.1',   size: '95 MB',  date: '2021-12-10', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.18.1', 'Официальная'], changelog: ['Исправления багов'] },
+      { id: 'v1.18',     name: '1.18',     category: 'vanilla', type: 'vanilla', desc: 'Caves & Cliffs Part 2 — обновление генерации мира.', mcVersion: '1.18',     size: '95 MB',  date: '2021-11-30', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.18', 'Официальная'], changelog: ['Новые пещеры', 'Новые горы'] },
+      { id: 'v1.17.1',   name: '1.17.1',   category: 'vanilla', type: 'vanilla', desc: 'Caves & Cliffs Part 1 — стабильная версия.', mcVersion: '1.17.1',   size: '90 MB',  date: '2021-07-06', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.17.1', 'Официальная'], changelog: ['Медь', 'Аметист', 'Козлы', 'Новые блоки'] },
+      { id: 'v1.17',     name: '1.17',     category: 'vanilla', type: 'vanilla', desc: 'Caves & Cliffs Part 1 — первые нововведения.', mcVersion: '1.17',     size: '90 MB',  date: '2021-06-08', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.17', 'Официальная'], changelog: ['Медь', 'Аметист', 'Козлы'] },
+      { id: 'v1.16.5',   name: '1.16.5',   category: 'vanilla', type: 'vanilla', desc: 'Nether Update — финальная стабильная версия.', mcVersion: '1.16.5',   size: '85 MB',  date: '2021-01-15', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.16.5', 'Официальная'], changelog: ['Nether Update', 'Пиглины', 'Страйдеры', 'Новый незер'] },
+
+      // ===== OFFLINE / PIRATE VERSIONS =====
+      { id: 'o1.21',     name: '1.21 (Пиратка)',   category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.21. Работает без авторизации Microsoft.', mcVersion: '1.21',     size: '120 MB', date: '2025-06-11', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.21', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.20.6',   name: '1.20.6 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.20.6. Без Microsoft.', mcVersion: '1.20.6',   size: '110 MB', date: '2025-05-15', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.20.6', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.20.4',   name: '1.20.4 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.20.4. Работает с пиратскими аккаунтами.', mcVersion: '1.20.4',   size: '105 MB', date: '2024-04-23', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.20.4', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.20.2',   name: '1.20.2 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.20.2.', mcVersion: '1.20.2',   size: '105 MB', date: '2023-09-21', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.20.2', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.20.1',   name: '1.20.1 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.20.1.', mcVersion: '1.20.1',   size: '105 MB', date: '2023-06-12', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.20.1', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.20',     name: '1.20 (Пиратка)',   category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.20.', mcVersion: '1.20',     size: '105 MB', date: '2023-06-07', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.20', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.19.4',   name: '1.19.4 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.19.4.', mcVersion: '1.19.4',   size: '100 MB', date: '2023-03-14', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.19.4', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.19.3',   name: '1.19.3 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.19.3.', mcVersion: '1.19.3',   size: '100 MB', date: '2022-12-07', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.19.3', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.19.2',   name: '1.19.2 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.19.2.', mcVersion: '1.19.2',   size: '100 MB', date: '2022-08-05', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.19.2', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.19.1',   name: '1.19.1 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.19.1.', mcVersion: '1.19.1',   size: '100 MB', date: '2022-07-27', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.19.1', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.19',     name: '1.19 (Пиратка)',   category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.19.', mcVersion: '1.19',     size: '100 MB', date: '2022-06-07', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.19', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.18.2',   name: '1.18.2 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.18.2.', mcVersion: '1.18.2',   size: '95 MB',  date: '2022-02-28', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.18.2', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.18.1',   name: '1.18.1 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.18.1.', mcVersion: '1.18.1',   size: '95 MB',  date: '2021-12-10', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.18.1', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.18',     name: '1.18 (Пиратка)',   category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.18.', mcVersion: '1.18',     size: '95 MB',  date: '2021-11-30', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.18', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.17.1',   name: '1.17.1 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.17.1.', mcVersion: '1.17.1',   size: '90 MB',  date: '2021-07-06', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.17.1', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.17',     name: '1.17 (Пиратка)',   category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.17.', mcVersion: '1.17',     size: '90 MB',  date: '2021-06-08', installed: false, progress: 0, loader: null, hasVisualMods: false, tags: ['1.17', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+      { id: 'o1.16.5',   name: '1.16.5 (Пиратка)', category: 'offline', type: 'vanilla', desc: 'Пиратская версия 1.16.5.', mcVersion: '1.16.5',   size: '85 MB',  date: '2021-01-15', installed: false, progress: 0, loader: null, hasVisualMods: true,  tags: ['1.16.5', 'Пиратка', 'Offline'], changelog: ['Пиратская версия'] },
+    ];
+
+    const ACCOUNTS = [];
+
+    let currentUser = null;
+    let selectedAccountType = 'ms';
+    let currentFilter = 'all';
+    let selectedVersionId = null;
+    let installIntervals = {};
+    let installedVersions = {}; // from installed.json
+
+    // ============================================
+    // WINDOW CONTROLS (frameless)
+    // ============================================
+    function minimizeWindow() {
+      if (window.electronAPI?.minimizeWindow) electronAPI.minimizeWindow();
+    }
+    function closeWindow() {
+      if (window.electronAPI?.closeWindow) electronAPI.closeWindow();
+    }
+
+    function safeText(id, val) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    }
+    function safeHTML(el, html) {
+      if (el) el.innerHTML = html;
+    }
+    function safeEl(id) {
+      const el = document.getElementById(id);
+      if (!el) console.warn('[Oasis] Element #' + id + ' not found');
+      return el;
+    }
+
+    // ============================================
+    // INIT
+    // ============================================
+    document.addEventListener('DOMContentLoaded', () => {
+      try { typeof lucide!=='undefined'&&lucide.createIcons(); } catch (e) { console.warn('lucide icons unavailable', e); }
+      renderVersions();
+      renderAccounts();
+      setupAuthTabs();
+      loadInstalled();
+      checkSavedAuth();
+      tryAutoLogin();
+      setTimeout(() => animateCards(), 100);
+    });
+
+    function animateCards() {
+      document.querySelectorAll('.version-card').forEach((c, i) => {
+        setTimeout(() => c.classList.add('visible'), i * 80);
+      });
+    }
+
+    // ============================================
+    // AUTH
+    // ============================================
+    function setupAuthTabs() {
+      document.querySelectorAll('.auth-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          const isLogin = tab.dataset.tab === 'login';
+          document.getElementById('formLogin').style.display = isLogin ? '' : 'none';
+          document.getElementById('formRegister').style.display = isLogin ? 'none' : '';
+          typeof lucide!=='undefined'&&lucide.createIcons();
+        });
+      });
+    }
+
+    function handleLogin() {
+      const email = document.getElementById('loginEmail').value.trim();
+      const pass = document.getElementById('loginPassword').value.trim();
+      const remember = document.getElementById('rememberMe').checked;
+      const errEl = document.getElementById('loginError');
+      if (!email || !pass) { errEl.textContent = 'Заполните все поля'; return; }
+      errEl.textContent = '';
+      if (!window.electronAPI?.authLogin) {
+        showToast('Логин доступен только в десктопном приложении', 'error');
+        return;
+      }
+      const btn = document.querySelector('#formLogin .btn-primary');
+      btn.disabled = true;
+      btn.querySelector('.btn-text').textContent = 'Вход...';
+      window.electronAPI.authLogin(email, pass).then(res => {
+        btn.disabled = false;
+        btn.querySelector('.btn-text').textContent = 'Войти';
+        if (res.success) {
+          currentUser = { nickname: res.data.user?.nickname || email.split('@')[0], email };
+          if (window.electronAPI?.rememberMeSet) {
+            window.electronAPI.rememberMeSet(email, res.data.refreshToken, remember);
+          }
+          showToast('Успешный вход!', 'success');
+          setTimeout(() => enterLauncher(), 400);
+        } else {
+          errEl.textContent = res.error === 'Failed to fetch' ? 'Сервер недоступен. Попробуйте позже.' : (res.error || 'Ошибка входа');
+        }
+      });
+    }
+
+    function handleRegister() {
+      const nick = document.getElementById('regNick').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const pass = document.getElementById('regPassword').value.trim();
+      const confirm = document.getElementById('regPasswordConfirm').value.trim();
+      const errEl = document.getElementById('regError');
+      if (!nick || !email || !pass || !confirm) { errEl.textContent = 'Заполните все поля'; return; }
+      if (pass.length < 8) { errEl.textContent = 'Пароль минимум 8 символов'; return; }
+      if (pass !== confirm) { errEl.textContent = 'Пароли не совпадают'; return; }
+      errEl.textContent = '';
+      if (!window.electronAPI?.authRegister) {
+        showToast('Регистрация доступна только в десктопном приложении', 'error');
+        return;
+      }
+      const btn = document.querySelector('#formRegister .btn-primary');
+      btn.disabled = true;
+      btn.textContent = 'Создание...';
+      window.electronAPI.authRegister(email, pass).then(res => {
+        btn.disabled = false;
+        btn.textContent = 'Создать аккаунт';
+        if (res.success) {
+          currentUser = { nickname: res.data.user?.nickname || nick || email.split('@')[0], email };
+          if (window.electronAPI?.rememberMeSet) {
+            window.electronAPI.rememberMeSet(email, res.data.refreshToken, true);
+          }
+          showToast('Аккаунт создан!', 'success');
+          setTimeout(() => enterLauncher(), 400);
+        } else {
+          errEl.textContent = res.error === 'Failed to fetch' ? 'Сервер недоступен. Попробуйте позже.' : (res.error || 'Ошибка регистрации');
+        }
+      });
+    }
+
+    function enterLauncher() {
+      if (enteringLauncher) return;
+      enteringLauncher = true;
+      const auth = safeEl('screenAuth');
+      if (auth) auth.style.display = 'none';
+      const main = safeEl('screenMain');
+      if (main) main.classList.add('visible');
+      // Сначала показываем ник из currentUser (быстрый старт),
+      // потом loadProfile() обновит из _profileData
+      const initialNick = _profileData.nickname !== 'Steve' ? _profileData.nickname : (currentUser.nickname || 'User');
+      safeText('sidebarAvatar', initialNick.charAt(0).toUpperCase());
+      safeText('sidebarName', initialNick);
+      typeof lucide!=='undefined'&&lucide.createIcons();
+      loadAccounts();
+      loadProfile();
+      loadFriends();
+      setTimeout(() => showToast('Обновления проверены. Версия актуальна.', 'info'), 1000);
+      switchPage('dashboard');
+    }
+
+    function logout() {
+      if (window.electronAPI?.authLogout) {
+        window.electronAPI.authLogout();
+      }
+      enteringLauncher = false;
+      currentUser = null;
+      const main = safeEl('screenMain');
+      if (main) main.classList.remove('visible');
+      const auth = safeEl('screenAuth');
+      if (auth) auth.style.display = '';
+      ['loginEmail','loginPassword','regNick','regEmail','regPassword'].forEach(id => {
+        const el = safeEl(id); if (el) el.value = '';
+      });
+      document.getElementById('loginError').textContent = '';
+      document.getElementById('regError').textContent = '';
+      closeDetail();
+      showToast('Вы вышли из аккаунта', 'info');
+    }
+
+    function logoutAndForget() {
+      if (window.electronAPI?.rememberMeClear) {
+        window.electronAPI.rememberMeClear();
+      }
+      if (window.electronAPI?.authLogout) {
+        window.electronAPI.authLogout();
+      }
+      enteringLauncher = false;
+      currentUser = null;
+      const main = safeEl('screenMain');
+      if (main) main.classList.remove('visible');
+      const auth = safeEl('screenAuth');
+      if (auth) auth.style.display = '';
+      ['loginEmail','loginPassword','regNick','regEmail','regPassword'].forEach(id => {
+        const el = safeEl(id); if (el) el.value = '';
+      });
+      document.getElementById('loginError').textContent = '';
+      document.getElementById('regError').textContent = '';
+      document.getElementById('rememberMe').checked = false;
+      closeDetail();
+      showToast('Данные входа удалены', 'info');
+    }
+
+    function checkSavedAuth() {
+      if (!window.electronAPI?.checkAuth) return;
+      window.electronAPI.checkAuth().then(res => {
+        if (res.success && res.data) {
+          currentUser = { nickname: res.data.nickname || res.data.email?.split('@')[0] || 'User', email: res.data.email || '' };
+          enterLauncher();
+        }
+      });
+    }
+
+    let enteringLauncher = false;
+
+    function tryAutoLogin() {
+      if (!window.electronAPI?.rememberMeGet) return;
+      window.electronAPI.rememberMeGet().then(res => {
+        if (!res.success || !res.data || !res.data.rememberMe || !res.data.refreshToken) return;
+        if (enteringLauncher) return;
+        const { email, refreshToken } = res.data;
+        // Just check auth — existing tokens may still be valid
+        window.electronAPI.checkAuth().then(checkRes => {
+          if (checkRes.success && !enteringLauncher) {
+            currentUser = { nickname: checkRes.data.nickname || email?.split('@')[0] || 'User', email: checkRes.data.email || email };
+            enterLauncher();
+          }
+        });
+      });
+    }
+
+    function forgetSavedLogin() {
+      if (window.electronAPI?.rememberMeClear) {
+        window.electronAPI.rememberMeClear();
+      }
+      showToast('Сохранённые данные входа удалены', 'info');
+    }
+
+    function loadInstalled() {
+      if (!window.electronAPI?.getInstalled) return;
+      window.electronAPI.getInstalled().then(res => {
+        if (res.success && res.data) {
+          installedVersions = res.data;
+          renderVersions();
+        }
+      });
+    }
+
+    // ============================================
+    // NAVIGATION
+    // ============================================
+    const PAGE_MAP = {
+      dashboard: { id: 'pageDashboard', title: 'Мои версии' },
+      account:   { id: 'pageAccount',   title: 'Мой аккаунт' },
+      profile:   { id: 'pageProfile',   title: 'Профиль' },
+      friends:   { id: 'pageFriends',   title: 'Друзья' },
+      accounts:  { id: 'pageAccounts',  title: 'Мои аккаунты' },
+      settings:  { id: 'pageSettings',  title: 'Настройки' },
+    };
+
+    function switchPage(page) {
+      // Highlight sidebar button
+      document.querySelectorAll('.sidebar-nav-item').forEach(b => b.classList.remove('active'));
+      const navBtn = document.querySelector(`.sidebar-nav-item[data-page="${page}"]`);
+      if (navBtn) navBtn.classList.add('active');
+
+      // Hide ALL sections (both .grid-page and .page) by removing .visible
+      document.querySelectorAll('.grid-page, .page').forEach(p => p.classList.remove('visible'));
+
+      const entry = PAGE_MAP[page];
+      if (!entry) {
+        // Unknown page fallback
+        safeText('pageTitle', page === 'news' ? 'Новости' : page);
+        closeDetail();
+        if (page === 'news') showToast('Новости', 'info');
+        return;
+      }
+
+      // Show only the target section
+      const pg = safeEl(entry.id);
+      if (pg) pg.classList.add('visible');
+      safeText('pageTitle', entry.title);
+      closeDetail();
+
+      // Side-effects per page
+      if (page === 'account') syncProfileToAccountPage();
+      if (page === 'profile') {
+        const nickInput = document.getElementById('profileNick');
+        const statusInput = document.getElementById('profileStatus');
+        const bioInput = document.getElementById('profileBio');
+        if (nickInput) nickInput.value = _profileData.nickname;
+        if (statusInput) statusInput.value = _profileData.status;
+        if (bioInput) bioInput.value = _profileData.bio;
+        // Rebuild favorite version badges
+        const container = document.getElementById('profileFavVersions');
+        if (container) {
+          container.innerHTML = '';
+          if (_profileData.favoriteVersionIds.length === 0) {
+            container.innerHTML = '<span class="pfv-empty">Выберите из установленных</span>';
+          } else {
+            _profileData.favoriteVersionIds.forEach(vid => {
+              const v = VERSIONS.find(x => x.id === vid);
+              if (!v) return;
+              const badge = document.createElement('span');
+              badge.className = 'pfv-badge';
+              badge.dataset.vid = vid;
+              badge.innerHTML = `${v.name} <span class="pfv-remove" onclick="toggleFavVersion('${vid}')"><i data-lucide="x" width="10" height="10"></i></span>`;
+              container.appendChild(badge);
+            });
+          }
+        }
+        // Avatar display
+        const pImg = document.getElementById('profileAvatarImg');
+        const pLetter = document.getElementById('profileAvatarLetter');
+        if (_profileData.avatarDataUrl && pImg) { pImg.src = _profileData.avatarDataUrl; pImg.style.display = 'block'; if (pLetter) pLetter.style.display = 'none'; }
+        else { if (pImg) pImg.style.display = 'none'; if (pLetter) { pLetter.style.display = 'flex'; pLetter.textContent = (_profileData.nickname || 'U').charAt(0).toUpperCase(); } }
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+      }
+      if (page === 'friends') {
+        loadFriends();
+      }
+    }
+
+    // ============================================
+    // VERSIONS — helpers
+    // ============================================
+    function parseMcVer(v) {
+      const parts = v.split('.').map(Number);
+      return { major: parts[0] || 0, minor: parts[1] || 0, patch: parts[2] || 0 };
+    }
+    function cmpMcVer(a, b) {
+      if (a.major !== b.major) return a.major - b.major;
+      if (a.minor !== b.minor) return a.minor - b.minor;
+      return a.patch - b.patch;
+    }
+    function isInRange(verStr, lo = '1.16.5', hi = '1.21') {
+      const v = parseMcVer(verStr);
+      return cmpMcVer(v, parseMcVer(lo)) >= 0 && cmpMcVer(v, parseMcVer(hi)) <= 0;
+    }
+
+    // ============================================
+    // VERSIONS — render & filter
+    // ============================================
+    function isVersionInstalled(v) {
+      if (!v) return false;
+      const key = v.id || v.mcVersion;
+      if (key && installedVersions[key]) return true;
+      // Also check by mcVersion for backward compat
+      if (v.mcVersion && installedVersions[v.mcVersion]) return true;
+      // Check by versionId from id field (e.g. 'v1.21')
+      if (v.id && installedVersions[v.id]) return true;
+      return false;
+    }
+
+    function renderVersions() {
+      const grid = document.getElementById('versionsGrid');
+      grid.innerHTML = '';
+
+      const filtered = getFilteredVersions();
+
+      filtered.forEach((v, idx) => {
+        const card = document.createElement('div');
+        card.className = 'version-card';
+        card.dataset.id = v.id;
+
+        const vInstalled = isVersionInstalled(v);
+        const statusClass = vInstalled ? 'installed' : (v.progress > 0 && v.progress < 100 ? 'update' : 'install');
+        const statusText = vInstalled ? 'Играть' : (v.progress > 0 && v.progress < 100 ? Math.round(v.progress) + '%' : 'Установить');
+        const showProgress = v.progress > 0 && v.progress < 100;
+
+        const bgClass = 'vc-bg-vanilla';
+        const catLabel = v.category === 'offline' ? 'Offline' : 'Vanilla';
+        const visualModLabel = v.hasVisualMods ? '✅ Доступны' : '⚠️ Нет';
+        const visualModClass = v.hasVisualMods ? 'yes' : 'no';
+
+        card.innerHTML = `
+          <div class="vc-overlay"></div>
+          <div class="vc-bg ${bgClass}"></div>
+          <div class="vc-content">
+            <div class="vc-top-row">
+              <span class="vc-name">${v.name}</span>
+              <span class="vc-badge badge-${v.category}">${catLabel}</span>
+            </div>
+            <div class="vc-meta">
+              <span class="vc-meta-item">${v.mcVersion}</span>
+              <span class="vc-meta-item">·</span>
+              <span class="vc-meta-item">${v.size}</span>
+              <span class="vc-meta-item">·</span>
+              <span class="vc-visual-mod ${visualModClass}">${visualModLabel}</span>
+            </div>
+            <div class="vc-footer">
+              <span class="vc-date">${v.date}</span>
+              <button class="vc-action-btn ${statusClass}" data-id="${v.id}">
+                ${vInstalled ? '<i data-lucide="play" width="12" height="12"></i>' : v.progress > 0 && v.progress < 100 ? '<i data-lucide="loader-2" width="12" height="12" class="spin"></i>' : '<i data-lucide="download" width="12" height="12"></i>'}
+                ${statusText}
+              </button>
+            </div>
+          </div>
+          ${showProgress ? `<div class="vc-progress"><div class="fill" style="width:${v.progress}%"></div></div>` : ''}
+        `;
+
+        card.addEventListener('click', (e) => {
+          if (e.target.closest('.vc-action-btn')) return;
+          selectVersion(v.id);
+        });
+
+        grid.appendChild(card);
+
+        // Action button handler
+        const actionBtn = card.querySelector('.vc-action-btn');
+        actionBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handleVersionAction(v, actionBtn, card);
+        });
+
+        // Entrance animation (staggered)
+        setTimeout(() => card.classList.add('visible'), idx * 60);
+      });
+
+      // Scroll to top on re-render
+      const wrap = document.getElementById('versionsGridWrap');
+      if (wrap) wrap.scrollTop = 0;
+    }
+
+    function getFilteredVersions() {
+      let result = [...VERSIONS];
+
+      // Range filter: 1.16.5 – 1.21
+      result = result.filter(v => isInRange(v.mcVersion));
+
+      // Category filter
+      if (currentFilter !== 'all') {
+        result = result.filter(v => v.category === currentFilter);
+      }
+
+      // Search
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      if (query) {
+        result = result.filter(v =>
+          v.name.toLowerCase().includes(query) ||
+          v.desc.toLowerCase().includes(query) ||
+          v.tags.some(t => t.toLowerCase().includes(query))
+        );
+      }
+
+      // Sort: vanilla → offline, then by mcVersion descending
+      const catOrder = { vanilla: 0, offline: 1 };
+      result.sort((a, b) => {
+        const ca = catOrder[a.category] ?? 9;
+        const cb = catOrder[b.category] ?? 9;
+        if (ca !== cb) return ca - cb;
+        return cmpMcVer(parseMcVer(b.mcVersion), parseMcVer(a.mcVersion));
+      });
+
+      return result;
+    }
+
+    function filterVersions() {
+      renderVersions();
+    }
+
+    function setFilter(type, btn) {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = type;
+      renderVersions();
+    }
+
+    function startVersionDownload(v) {
+      return new Promise((resolve, reject) => {
+        if (!window.electronAPI?.installVersion) {
+          showToast('Установка доступна только в десктопном приложении', 'error');
+          reject(new Error('No desktop API'));
+          return;
+        }
+
+        v.progress = 0;
+        showToast(`Начинаем загрузку ${v.name}...`, 'info');
+
+        window.electronAPI.installVersion(v.id, v.category, v.mcVersion)
+          .then(() => {
+            v.progress = 100;
+            v._installing = false;
+            showToast(`${v.name} установлена!`, 'success');
+            installedVersions[v.id] = { id: v.id, type: v.category, installedAt: new Date().toISOString() };
+            updateDetailPanel(v);
+            renderVersions();
+            resolve();
+          })
+          .catch((err) => {
+            v.progress = 0;
+            v._installing = false;
+            showToast('Ошибка установки: ' + err, 'error');
+            updateDetailPanel(v);
+            renderVersions();
+            reject(err);
+          });
+      });
+    }
+
+    function handleVersionAction(v, btn, card) {
+      const vInstalled = isVersionInstalled(v);
+      if (vInstalled) {
+        launchVersion(v);
+        return;
+      }
+      if (v._installing) {
+        showToast(`Загрузка ${v.name} уже идёт...`, 'info');
+        return;
+      }
+      if (v.progress > 0 && v.progress < 100) {
+        showToast(`Загрузка ${v.name} уже идёт...`, 'info');
+        return;
+      }
+      // Lock to prevent double-click
+      v._installing = true;
+      btn.disabled = true;
+      v.progress = 0;
+      btn.innerHTML = '<i data-lucide="loader-2" width="12" height="12" class="spin"></i> Загрузка...';
+      btn.className = 'vc-action-btn update';
+
+      // Add progress bar if not present
+      let progressBar = card.querySelector('.vc-progress');
+      if (!progressBar) {
+        progressBar = document.createElement('div');
+        progressBar.className = 'vc-progress';
+        progressBar.innerHTML = '<div class="fill" style="width:0%"></div>';
+        card.appendChild(progressBar);
+      }
+      const fill = progressBar.querySelector('.fill');
+
+      startVersionDownload(v);
+
+      // Poll for progress updates from Electron
+      const iv = setInterval(() => {
+        if (v.progress >= 100) {
+          clearInterval(iv);
+          v._installing = false;
+          btn.disabled = false;
+          if (window.electronAPI?.getInstalled) {
+            window.electronAPI.getInstalled().then(r => { if (r.success) installedVersions = r.data; });
+          }
+          btn.innerHTML = '<i data-lucide="play" width="12" height="12"></i> Играть';
+          btn.className = 'vc-action-btn installed';
+          if (fill) fill.style.width = '100%';
+        } else if (v.progress > 0) {
+          btn.innerHTML = `<i data-lucide="loader-2" width="12" height="12" class="spin"></i> ${Math.round(v.progress)}%`;
+          if (fill) fill.style.width = `${v.progress}%`;
+        } else if (v.progress < 0) {
+          clearInterval(iv);
+          v._installing = false;
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="download" width="12" height="12"></i> Установить';
+          btn.className = 'vc-action-btn';
+          if (fill) { fill.style.width = '0%'; }
+        }
+      }, 300);
+    }
+
+    function launchVersion(v) {
+      const account = getPrimaryAccount();
+      if (!account) {
+        showToast('Выберите аккаунт перед запуском', 'error');
+        return;
+      }
+      if (!window.electronAPI?.launchGame) {
+        showToast('Запуск доступен только в десктопном приложении', 'error');
+        return;
+      }
+      showToast(`Запуск ${v.name}...`, 'info');
+      window.electronAPI.launchGame(v.id, v.mcVersion, v.category, account.nickname, account.type, String(account.id))
+        .catch((err) => {
+          showToast('Ошибка запуска: ' + err, 'error');
+        });
+    }
+
+    // ============================================
+    // VERSION SELECTION & DETAIL PANEL
+    // ============================================
+    function selectVersion(id) {
+      selectedVersionId = id;
+
+      document.querySelectorAll('.version-card').forEach(c => c.classList.remove('selected'));
+      const card = document.querySelector(`.version-card[data-id="${id}"]`);
+      if (card) card.classList.add('selected');
+
+      const v = VERSIONS.find(x => x.id === id);
+      if (!v) return;
+
+      document.getElementById('detailPanel').classList.add('open');
+      updateDetailPanel(v);
+    }
+
+    function updateDetailPanel(v) {
+      const bgClass = 'vc-bg-vanilla';
+      const coverBg = document.getElementById('dpCoverBg');
+      if (coverBg) coverBg.className = 'dp-cover-bg ' + bgClass;
+
+      const catLabel = v.category === 'offline' ? 'Offline' : 'Vanilla';
+      safeText('dpName', v.name);
+      safeText('dpBadge', catLabel);
+      const badge = document.getElementById('dpBadge');
+      if (badge) badge.className = 'vc-badge badge-' + v.category;
+      const dpType = document.getElementById('dpType');
+      if (dpType) safeHTML(dpType, `<span class="vc-badge badge-${v.category}">${escHtml(catLabel)}</span> · ${escHtml(v.mcVersion)}`);
+      safeText('dpDesc', v.desc);
+      safeText('dpMcVer', v.mcVersion);
+      safeText('dpSize', v.size);
+      safeText('dpLoader', v.loader || '—');
+      safeText('dpDate', v.date);
+
+      const changelogEl = document.getElementById('dpChangelog');
+      if (changelogEl) safeHTML(changelogEl, v.changelog.map(item => `<li>${escHtml(item)}</li>`).join(''));
+
+      const installBtn = document.getElementById('dpInstallBtn');
+      if (installBtn) {
+        if (isVersionInstalled(v)) {
+          installBtn.className = 'dp-btn-play';
+          installBtn.innerHTML = '<i data-lucide="play" width="16" height="16"></i> Играть';
+          installBtn.onclick = () => launchVersion(v);
+        } else if (v.progress > 0 && v.progress < 100) {
+          installBtn.className = 'dp-btn-install';
+          installBtn.innerHTML = '<i data-lucide="loader-2" width="16" height="16" class="spin"></i> Загрузка...';
+        } else {
+          installBtn.className = 'dp-btn-install';
+          installBtn.innerHTML = '<i data-lucide="download" width="16" height="16"></i> Установить';
+          installBtn.onclick = () => installFromDetail();
+        }
+      }
+
+      typeof lucide!=='undefined'&&lucide.createIcons();
+    }
+
+    function closeDetail() {
+      selectedVersionId = null;
+      document.getElementById('detailPanel').classList.remove('open');
+      document.querySelectorAll('.version-card').forEach(c => c.classList.remove('selected'));
+    }
+
+    function installFromDetail() {
+      const v = VERSIONS.find(x => x.id === selectedVersionId);
+      if (!v || isVersionInstalled(v) || v._installing) return;
+
+      v._installing = true;
+      startVersionDownload(v);
+      updateDetailPanel(v);
+      setTimeout(() => renderVersions(), 300);
+    }
+
+    // ============================================
+    // DRAG & DROP — File Management
+    // ============================================
+    const FILE_CATEGORIES = ['mods', 'shaderpacks', 'resourcepacks'];
+    let _activeCustomTab = 'mods';
+
+    function switchCustomTab(cat) {
+      _activeCustomTab = cat;
+      document.querySelectorAll('.dp-custom-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+      document.querySelectorAll('.dp-custom-panel').forEach(p => p.classList.toggle('active', p.id === 'dpPanel-' + cat));
+      refreshFileList(cat);
+    }
+
+    function onDragOver(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+      e.currentTarget.classList.add('drag-over');
+    }
+
+    function onDragLeave(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function onDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const zone = e.currentTarget;
+      zone.classList.remove('drag-over');
+      const category = zone.dataset.category;
+      const v = VERSIONS.find(x => x.id === selectedVersionId);
+      if (!v) return showToast('Сначала выберите версию', 'error');
+      const mcVersion = v.mcVersion;
+
+      const files = e.dataTransfer.files;
+      if (!files || files.length === 0) return;
+
+      // In Electron, we can get paths from the dropped files
+      let droppedCount = 0;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        // Electron exposes file.path on drag-and-drop from the OS
+        const fpath = f.path;
+        if (!fpath) continue;
+        droppedCount++;
+        handleFileDrop(fpath, mcVersion, category);
+      }
+      if (droppedCount === 0) showToast('Не удалось прочитать файлы. Возможно, они не с локального диска.', 'error');
+    }
+
+    async function handleFileDrop(sourcePath, mcVersion, category) {
+      try {
+        const result = await window.electronAPI.dropFile(sourcePath, mcVersion, category);
+        if (result && result.success) {
+          showToast(`Файл "${result.fileName}" добавлен`, 'success');
+          refreshFileList(category);
+        }
+      } catch (err) {
+        showToast('Ошибка копирования файла: ' + err.message, 'error');
+      }
+    }
+
+    async function refreshFileList(category) {
+      const v = VERSIONS.find(x => x.id === selectedVersionId);
+      if (!v) return;
+      const container = document.getElementById('dpFileList-' + category);
+      if (!container) return;
+      container.innerHTML = '<div class="dp-empty-files"><i data-lucide="loader-2" width="12" height="12" class="spin"></i> Загрузка...</div>';
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+
+      try {
+        const result = await window.electronAPI.listFiles(v.mcVersion, category);
+        const files = result && result.data ? result.data : [];
+        if (files.length === 0) {
+          container.innerHTML = '<div class="dp-empty-files">Нет файлов</div>';
+        } else {
+          container.innerHTML = files.map(f => {
+            const sizeStr = f.size > 1048576 ? (f.size / 1048576).toFixed(1) + ' MB' : f.size > 1024 ? (f.size / 1024).toFixed(0) + ' KB' : f.size + ' B';
+            return `<div class="dp-file-item">
+              <span class="dfi-name" title="${escHtml(f.name)}">${escHtml(f.name)}</span>
+              <span class="dfi-size">${sizeStr}</span>
+              <button class="dfi-del" onclick="deleteFileItem('${escHtml(v.mcVersion)}', '${category}', '${escHtml(f.name)}')" title="Удалить"><i data-lucide="x" width="12" height="12"></i></button>
+            </div>`;
+          }).join('');
+        }
+      } catch (err) {
+        container.innerHTML = '<div class="dp-empty-files">Ошибка загрузки</div>';
+      }
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    async function deleteFileItem(mcVersion, category, fileName) {
+      try {
+        await window.electronAPI.deleteFile(mcVersion, category, fileName);
+        showToast(`Файл "${fileName}" удалён`, 'info');
+        refreshFileList(category);
+      } catch (err) {
+        showToast('Ошибка удаления: ' + err.message, 'error');
+      }
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/[&<>"']/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        if (m === '"') return '&quot;';
+        return '&#39;';
+      });
+    }
+
+    // Load file list when detail panel opens for an installed version
+    const _origUpdateDetail = updateDetailPanel;
+    updateDetailPanel = function(v) {
+      _origUpdateDetail(v);
+      setTimeout(() => refreshFileList(_activeCustomTab), 100);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+      // Hide share code display
+      const shareEl = document.getElementById('dpShareCode');
+      if (shareEl) shareEl.style.display = 'none';
+    };
+
+    // ============================================
+    // PROFILE
+    // ============================================
+    function openAvatarPicker() {
+      document.getElementById('avatarFileInput').click();
+    }
+
+    async function uploadAvatar(input) {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        showToast('Только JPEG и PNG', 'error');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        showToast('Файл больше 2 МБ', 'error');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        _profileData.avatarDataUrl = e.target.result;
+        // Update profile page avatar
+        const pImg = document.getElementById('profileAvatarImg');
+        const pLetter = document.getElementById('profileAvatarLetter');
+        if (pImg) { pImg.src = _profileData.avatarDataUrl; pImg.style.display = 'block'; }
+        if (pLetter) pLetter.style.display = 'none';
+        // Sync to account page
+        syncProfileToAccountPage();
+        // Upload to server
+        if (window.electronAPI?.uploadAvatar) {
+          const res = await window.electronAPI.uploadAvatar(_profileData.avatarDataUrl);
+          if (!res.success) showToast('Ошибка загрузки аватарки на сервер', 'error');
+        }
+        // Save to local store
+        await saveProfileToStore();
+        showToast('Аватарка обновлена', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Persistent profile data store
+    let _profileData = {
+      avatarDataUrl: null,
+      nickname: 'Steve',
+      status: '',
+      bio: '',
+      favoriteVersionIds: [],
+    };
+
+    async function loadProfile() {
+      // Сначала загружаем из локального electron-store (быстрее, актуальнее)
+      if (window.electronAPI?.loadProfileLocal) {
+        const local = await window.electronAPI.loadProfileLocal();
+        if (local.success && local.data) {
+          _profileData = { ..._profileData, ...local.data };
+          syncProfileToAccountPage();
+        }
+      }
+      // Потом с сервера — но не перезаписываем локальный ник, если он был изменён
+      if (window.electronAPI?.getProfile) {
+        try {
+          const server = await window.electronAPI.getProfile();
+          if (server.success && server.data) {
+            const p = server.data;
+            // Серверный nickname используем только если локальный всё ещё дефолтный
+            if (_profileData.nickname === 'Steve' && p.nickname) {
+              _profileData.nickname = p.nickname;
+            }
+            _profileData.status = p.status || _profileData.status;
+            _profileData.bio = p.bio || _profileData.bio;
+            if (p.favoriteVersions) _profileData.favoriteVersionIds = p.favoriteVersions;
+            if (p.avatarUrl) _profileData.avatarDataUrl = p.avatarUrl;
+            // Синхронизируем currentUser с _profileData
+            currentUser.nickname = _profileData.nickname;
+            syncProfileToAccountPage();
+          }
+        } catch (e) {
+          console.warn('[Oasis] Profile fetch failed (non-critical):', e);
+        }
+      }
+    }
+
+    function syncProfileToAccountPage() {
+      const displayName = document.getElementById('accDisplayName');
+      const displayStatus = document.getElementById('accDisplayStatus');
+      const displayBio = document.getElementById('accDisplayBio');
+      const displayFavs = document.getElementById('accDisplayFavs');
+      const displayAccounts = document.getElementById('accDisplayAccounts');
+      const avatarLetter = document.getElementById('accAvatarLetter');
+      const avatarImg = document.getElementById('accAvatarImg');
+      const sidebarName = document.getElementById('sidebarName');
+      const sidebarAvatar = document.getElementById('sidebarAvatar');
+
+      if (displayName) displayName.textContent = _profileData.nickname || 'Пользователь';
+      if (displayStatus) displayStatus.textContent = _profileData.status || '—';
+      if (displayBio) displayBio.textContent = _profileData.bio || 'Не заполнено';
+      if (displayFavs) {
+        const ids = _profileData.favoriteVersionIds;
+        if (ids.length === 0) displayFavs.textContent = 'Нет';
+        else displayFavs.textContent = ids.map(id => { const v = VERSIONS.find(x => x.id === id); return v ? v.name : id; }).join(', ');
+      }
+      if (displayAccounts) displayAccounts.textContent = String(ACCOUNTS.length || 0);
+      if (sidebarName) sidebarName.textContent = _profileData.nickname || 'User';
+      if (sidebarAvatar) sidebarAvatar.textContent = (_profileData.nickname || 'U').charAt(0).toUpperCase();
+
+      // Avatar sync
+      if (_profileData.avatarDataUrl) {
+        if (avatarImg) { avatarImg.src = _profileData.avatarDataUrl; avatarImg.style.display = 'block'; }
+        if (avatarLetter) avatarLetter.style.display = 'none';
+      } else {
+        if (avatarImg) avatarImg.style.display = 'none';
+        if (avatarLetter) { avatarLetter.style.display = 'block'; avatarLetter.textContent = (_profileData.nickname || 'U').charAt(0).toUpperCase(); }
+      }
+    }
+
+    async function saveProfile() {
+      const nickInput = document.getElementById('profileNick');
+      const statusInput = document.getElementById('profileStatus');
+      const bioInput = document.getElementById('profileBio');
+      const newNick = nickInput?.value?.trim();
+      if (newNick && newNick.length >= 2) {
+        _profileData.nickname = newNick;
+      }
+      _profileData.status = (statusInput?.value?.trim() || '');
+      _profileData.bio = (bioInput?.value?.trim() || '');
+      // Синхронизируем currentUser
+      currentUser.nickname = _profileData.nickname;
+      syncProfileToAccountPage();
+      await saveProfileToStore();
+      showToast('Профиль сохранён', 'success');
+    }
+
+    async function saveProfileToStore() {
+      // Сохраняем ЛОКАЛЬНО всегда — это гарантирует персистентность
+      if (window.electronAPI?.saveProfileLocal) {
+        await window.electronAPI.saveProfileLocal({ ..._profileData });
+      }
+      // Пытаемся сохранить на сервер
+      if (window.electronAPI?.updateProfile) {
+        try {
+          await window.electronAPI.updateProfile(
+            _profileData.nickname,
+            _profileData.status,
+            _profileData.bio,
+            _profileData.favoriteVersionIds
+          );
+        } catch (e) {
+          // Не показываем ошибку — локально всё сохранилось
+        }
+      }
+    }
+
+    function toggleFavVersion(versionId) {
+      const container = document.getElementById('profileFavVersions');
+      if (!container) return;
+      const existing = container.querySelector(`[data-vid="${versionId}"]`);
+      if (existing) {
+        existing.remove();
+        _profileData.favoriteVersionIds = _profileData.favoriteVersionIds.filter(id => id !== versionId);
+        if (container.children.length === 0) {
+          container.innerHTML = '<span class="pfv-empty">Выберите из установленных</span>';
+        }
+        return;
+      }
+      if (_profileData.favoriteVersionIds.length >= 3) {
+        showToast('Максимум 3 любимые версии', 'error');
+        return;
+      }
+      const v = VERSIONS.find(x => x.id === versionId);
+      if (!v) return;
+      _profileData.favoriteVersionIds.push(versionId);
+      const empty = container.querySelector('.pfv-empty');
+      if (empty) empty.remove();
+      const badge = document.createElement('span');
+      badge.className = 'pfv-badge';
+      badge.dataset.vid = versionId;
+      badge.innerHTML = `${v.name} <span class="pfv-remove" onclick="toggleFavVersion('${versionId}')"><i data-lucide="x" width="10" height="10"></i></span>`;
+      container.appendChild(badge);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // Trigger profile bio counter
+    document.addEventListener('input', function(e) {
+      if (e.target && e.target.id === 'profileBio') {
+        const count = document.getElementById('profileBioCount');
+        if (count) count.textContent = e.target.value.length;
+      }
+    });
+
+    // ============================================
+    // FRIENDS
+    // ============================================
+    let _friendSearchTimer = null;
+    let _chatFriendId = null;
+    let _chatPollTimer = null;
+
+    function debouncedFriendSearch() {
+      clearTimeout(_friendSearchTimer);
+      _friendSearchTimer = setTimeout(() => doFriendSearch(), 300);
+    }
+
+    async function doFriendSearch() {
+      const q = document.getElementById('friendsSearchInput')?.value?.trim();
+      const results = document.getElementById('friendsSearchResults');
+      if (!results) return;
+      if (!q || q.length < 2) { results.innerHTML = ''; results.classList.remove('visible'); return; }
+      if (!window.electronAPI?.searchFriends) {
+        results.innerHTML = '<div class="fsr-item" style="color:var(--text-tertiary);cursor:default">Поиск недоступен</div>';
+        results.classList.add('visible');
+        return;
+      }
+      const res = await window.electronAPI.searchFriends(q);
+      const found = res.success ? (res.data || []) : [];
+      if (found.length === 0) {
+        results.innerHTML = '<div class="fsr-item" style="color:var(--text-tertiary);cursor:default">Ничего не найдено</div>';
+      } else {
+        results.innerHTML = found.map(u => `
+          <div class="fsr-item">
+            <div class="fsr-avatar">${u.nickname.charAt(0).toUpperCase()}</div>
+            <span class="fsr-name">${escHtml(u.nickname)}</span>
+            <button class="fsr-add" onclick="sendFriendRequest('${escHtml(u.nickname)}')">+ Друг</button>
+          </div>
+        `).join('');
+      }
+      results.classList.add('visible');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    // Close search results on outside click
+    document.addEventListener('click', function(e) {
+      const wrap = document.querySelector('.friends-search-wrap');
+      const results = document.getElementById('friendsSearchResults');
+      if (wrap && results && !wrap.contains(e.target)) results.classList.remove('visible');
+    });
+
+    async function sendFriendRequest(nickname) {
+      if (window.electronAPI?.sendFriendRequest) {
+        const res = await window.electronAPI.sendFriendRequest(nickname);
+        if (res.success) {
+          showToast(`Запрос в друзья отправлен ${nickname}`, 'success');
+        } else {
+          showToast(res.error || 'Ошибка отправки запроса', 'error');
+        }
+      } else {
+        showToast(`Запрос в друзья отправлен ${nickname}`, 'success');
+      }
+      document.getElementById('friendsSearchResults')?.classList.remove('visible');
+      const input = document.getElementById('friendsSearchInput');
+      if (input) input.value = '';
+    }
+
+    function switchFriendsTab(tab) {
+      document.querySelectorAll('.friends-tab').forEach(t => t.classList.toggle('active', t.dataset.ftab === tab));
+      document.querySelectorAll('.friends-panel').forEach(p => p.classList.toggle('active', p.id === 'friendsPanel-' + tab));
+      if (tab === 'friends') renderFriendsList();
+      if (tab === 'requests') renderFriendRequests();
+      if (tab === 'chat') renderChatSelect();
+    }
+
+    // Persistent friends data store
+    let _friendsData = [];
+    let _friendProfileTarget = null;
+
+    async function loadFriends() {
+      if (!window.electronAPI?.getFriends) return;
+      const res = await window.electronAPI.getFriends();
+      if (res.success && res.data) {
+        _friendsData = res.data.map(f => ({
+          id: f.id,
+          nickname: f.nickname,
+          avatarUrl: f.avatarUrl || null,
+          gameStatus: f.status === 'online' ? 'online' : f.status === 'ingame' ? 'ingame' : 'offline',
+          gameName: f.gameName || null,
+        }));
+        renderFriendsList();
+      }
+    }
+
+    function renderFriendsList() {
+      const list = document.getElementById('friendsList');
+      if (!list) return;
+      list.innerHTML = '';
+      _friendsData.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'friend-card';
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', () => openFriendProfile(f.id));
+
+        const avatar = document.createElement('div');
+        avatar.className = 'fc-avatar';
+        avatar.textContent = f.nickname.charAt(0).toUpperCase();
+
+        const info = document.createElement('div');
+        info.className = 'fc-info';
+
+        const name = document.createElement('div');
+        name.className = 'fc-name';
+        name.textContent = f.nickname;
+
+        const statusEl = document.createElement('div');
+        statusEl.className = 'fc-status';
+        const dot = document.createElement('span');
+        dot.className = `dot ${f.gameStatus === 'online' ? 'online' : f.gameStatus === 'ingame' ? 'ingame' : 'offline'}`;
+        statusEl.appendChild(dot);
+        statusEl.appendChild(document.createTextNode(
+          f.gameStatus === 'online' ? ' В сети' : f.gameStatus === 'ingame' ? ` Играет ${f.gameName || ''}` : ' Офлайн'
+        ));
+
+        info.appendChild(name);
+        info.appendChild(statusEl);
+
+        const actions = document.createElement('div');
+        actions.className = 'fc-actions';
+
+        const chatBtn = document.createElement('button');
+        chatBtn.className = 'fc-chat';
+        chatBtn.title = 'Чат';
+        chatBtn.innerHTML = '<i data-lucide="message-square" width="14" height="14"></i>';
+        chatBtn.addEventListener('click', (e) => { e.stopPropagation(); openChat(f.id, f.nickname); });
+        actions.appendChild(chatBtn);
+
+        const inviteBtn = document.createElement('button');
+        inviteBtn.className = 'fc-invite';
+        inviteBtn.title = 'Пригласить';
+        inviteBtn.innerHTML = '<i data-lucide="log-in" width="14" height="14"></i>';
+        inviteBtn.addEventListener('click', (e) => { e.stopPropagation(); inviteFriend(f.id); });
+        actions.appendChild(inviteBtn);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'fc-remove';
+        removeBtn.title = 'Удалить';
+        removeBtn.innerHTML = '<i data-lucide="user-x" width="14" height="14"></i>';
+        removeBtn.addEventListener('click', (e) => { e.stopPropagation(); removeFriend(f.id); });
+        actions.appendChild(removeBtn);
+
+        card.appendChild(avatar);
+        card.appendChild(info);
+        card.appendChild(actions);
+        list.appendChild(card);
+      });
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function openFriendProfile(friendId) {
+      const friend = _friendsData.find(f => f.id === friendId);
+      if (!friend) return;
+      _friendProfileTarget = friend;
+      const avatarEl = document.getElementById('fpmAvatar');
+      const nameEl = document.getElementById('fpmName');
+      const statusEl = document.getElementById('fpmStatus');
+      const bioEl = document.getElementById('fpmBio');
+      const chatBtn = document.getElementById('fpmChatBtn');
+      const removeBtn = document.getElementById('fpmRemoveBtn');
+      const blockBtn = document.getElementById('fpmBlockBtn');
+      if (avatarEl) avatarEl.textContent = friend.nickname.charAt(0).toUpperCase();
+      if (nameEl) nameEl.textContent = friend.nickname;
+      if (statusEl) statusEl.innerHTML = `<span class="dot" style="background:${friend.gameStatus === 'online' ? 'var(--success)' : friend.gameStatus === 'ingame' ? 'var(--accent-cyan)' : 'var(--text-tertiary)'}"></span> ${friend.gameStatus === 'online' ? 'В сети' : friend.gameStatus === 'ingame' ? `Играет ${escHtml(friend.gameName || '...')}` : 'Офлайн'}`;
+      if (bioEl) bioEl.textContent = 'Нет информации';
+      if (chatBtn) chatBtn.onclick = () => { closeModal('friendProfileModal'); openChat(friendId, friend.nickname); };
+      if (removeBtn) removeBtn.onclick = () => { closeModal('friendProfileModal'); removeFriend(friendId); };
+      if (blockBtn) blockBtn.onclick = () => { closeModal('friendProfileModal'); blockFriend(friendId); };
+      document.getElementById('friendProfileModal').classList.add('open');
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    function friendProfileChat() {
+      if (_friendProfileTarget) {
+        closeModal('friendProfileModal');
+        openChat(_friendProfileTarget.id, _friendProfileTarget.nickname);
+      }
+    }
+
+    function friendProfileRemove() {
+      if (_friendProfileTarget) {
+        closeModal('friendProfileModal');
+        removeFriend(_friendProfileTarget.id);
+      }
+    }
+
+    function friendProfileBlock() {
+      if (_friendProfileTarget) {
+        closeModal('friendProfileModal');
+        blockFriend(_friendProfileTarget.id);
+      }
+    }
+
+    async function renderFriendRequests() {
+      const list = document.getElementById('friendsRequestsList');
+      if (!list) return;
+      let requests = [];
+      if (window.electronAPI?.getFriendRequests) {
+        const res = await window.electronAPI.getFriendRequests();
+        if (res.success) requests = res.data || [];
+      }
+      if (requests.length === 0) {
+        list.innerHTML = '<div style="color:var(--text-tertiary);padding:20px;text-align:center">Нет входящих запросов</div>';
+        return;
+      }
+      list.innerHTML = '';
+      requests.forEach(r => {
+        const card = document.createElement('div');
+        card.className = 'fr-card';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'fr-avatar';
+        avatar.textContent = (r.sender?.nickname || '?').charAt(0).toUpperCase();
+
+        const name = document.createElement('span');
+        name.className = 'fr-name';
+        name.textContent = r.sender?.nickname || 'Неизвестно';
+
+        const actions = document.createElement('div');
+        actions.className = 'fr-actions';
+
+        const acceptBtn = document.createElement('button');
+        acceptBtn.className = 'fr-accept';
+        acceptBtn.textContent = 'Принять';
+        acceptBtn.addEventListener('click', () => acceptRequest(r.id));
+        actions.appendChild(acceptBtn);
+
+        const declineBtn = document.createElement('button');
+        declineBtn.className = 'fr-decline';
+        declineBtn.textContent = 'Отклонить';
+        declineBtn.addEventListener('click', () => declineRequest(r.id));
+        actions.appendChild(declineBtn);
+
+        card.appendChild(avatar);
+        card.appendChild(name);
+        card.appendChild(actions);
+        list.appendChild(card);
+      });
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    async function acceptRequest(id) {
+      if (window.electronAPI?.acceptFriendRequest) {
+        const res = await window.electronAPI.acceptFriendRequest(id);
+        if (res.success) {
+          showToast('Запрос принят', 'success');
+          await loadFriends();
+          renderFriendRequests();
+          return;
+        }
+        showToast(res.error || 'Ошибка', 'error');
+      } else {
+        showToast('Запрос принят', 'success');
+        renderFriendRequests();
+      }
+    }
+
+    async function declineRequest(id) {
+      if (window.electronAPI?.declineFriendRequest) {
+        const res = await window.electronAPI.declineFriendRequest(id);
+        if (res.success) showToast('Запрос отклонён', 'info');
+        else showToast(res.error || 'Ошибка', 'error');
+      } else {
+        showToast('Запрос отклонён', 'info');
+      }
+      renderFriendRequests();
+    }
+
+    async function removeFriend(id) {
+      if (window.electronAPI?.removeFriend) {
+        const res = await window.electronAPI.removeFriend(id);
+        if (!res.success) { showToast(res.error || 'Ошибка', 'error'); return; }
+      }
+      _friendsData = _friendsData.filter(f => f.id !== id);
+      renderFriendsList();
+      showToast('Пользователь удалён из друзей', 'info');
+    }
+
+    async function blockFriend(id) {
+      if (window.electronAPI?.blockFriend) {
+        const res = await window.electronAPI.blockFriend(id);
+        if (!res.success) { showToast(res.error || 'Ошибка', 'error'); return; }
+      }
+      _friendsData = _friendsData.filter(f => f.id !== id);
+      renderFriendsList();
+      showToast('Пользователь заблокирован', 'info');
+    }
+
+    function inviteFriend(id) {
+      const v = VERSIONS.find(x => x.id === selectedVersionId);
+      if (v) showToast(`Приглашение отправлено! Версия: ${v.name}`, 'success');
+      else showToast('Выберите версию для приглашения', 'error');
+    }
+
+    // Chat — persistent message store
+    let _chatMessagesStore = {}; // { friendId: [{ id, senderId, content, createdAt }] }
+
+    function _getChatStore(friendId) {
+      if (!_chatMessagesStore[friendId]) _chatMessagesStore[friendId] = [];
+      return _chatMessagesStore[friendId];
+    }
+
+    function _renderMessages(container, friendId) {
+      const msgs = _getChatStore(friendId);
+      container.innerHTML = msgs.map(m => {
+        const isMine = m.senderId !== friendId;
+        const time = new Date(m.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        return `<div class="fca-message ${isMine ? 'mine' : 'theirs'}">
+          ${escHtml(m.content)}
+          <div class="fca-msg-time">${time}</div>
+        </div>`;
+      }).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function renderChatSelect() {
+      const select = document.getElementById('friendsChatSelect');
+      const active = document.getElementById('friendsChatActive');
+      if (!select || !active) return;
+      if (_chatFriendId) { active.style.display = 'flex'; select.style.display = 'none'; return; }
+      active.style.display = 'none';
+      select.style.display = 'block';
+      const chatFriends = _friendsData.filter(f => f);
+      if (chatFriends.length === 0) {
+        select.innerHTML = '<div class="fcs-hint">У вас пока нет друзей</div>';
+        return;
+      }
+      select.innerHTML = '';
+      chatFriends.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'fcs-item';
+        item.addEventListener('click', () => openChat(f.id, f.nickname));
+
+        const avatar = document.createElement('div');
+        avatar.className = 'fcs-avatar';
+        avatar.textContent = f.nickname.charAt(0).toUpperCase();
+
+        const name = document.createElement('span');
+        name.className = 'fcs-name';
+        name.textContent = f.nickname;
+
+        item.appendChild(avatar);
+        item.appendChild(name);
+        select.appendChild(item);
+      });
+    }
+
+    function openChat(friendId, friendName) {
+      _chatFriendId = friendId;
+      const select = document.getElementById('friendsChatSelect');
+      const active = document.getElementById('friendsChatActive');
+      const nameEl = document.getElementById('chatFriendName');
+      const container = document.getElementById('chatMessages');
+      if (select) select.style.display = 'none';
+      if (active) active.style.display = 'flex';
+      if (nameEl) nameEl.textContent = friendName;
+      // Load messages from store, then fetch from server
+      if (container) _renderMessages(container, friendId);
+      loadChatFromServer(friendId);
+      // Start polling — fetch from server
+      clearInterval(_chatPollTimer);
+      _chatPollTimer = setInterval(() => {
+        const c = document.getElementById('chatMessages');
+        if (c && _chatFriendId) {
+          loadChatFromServer(_chatFriendId);
+        }
+      }, 3000);
+      // Mark chat tab active without re-rendering chat select
+      document.querySelectorAll('.friends-tab').forEach(t => t.classList.toggle('active', t.dataset.ftab === 'chat'));
+      document.querySelectorAll('.friends-panel').forEach(p => p.classList.toggle('active', p.id === 'friendsPanel-chat'));
+    }
+
+    async function loadChatFromServer(friendId) {
+      if (!window.electronAPI?.getChatMessages) return;
+      const res = await window.electronAPI.getChatMessages(friendId);
+      if (res.success && res.data) {
+        const store = _getChatStore(friendId);
+        const existingIds = new Set(store.map(m => m.id));
+        let changed = false;
+        for (const msg of res.data) {
+          if (!existingIds.has(msg.id)) {
+            store.push(msg);
+            changed = true;
+          }
+        }
+        if (changed) {
+          const container = document.getElementById('chatMessages');
+          if (container) _renderMessages(container, friendId);
+        }
+      }
+    }
+
+    function closeChat() {
+      _chatFriendId = null;
+      clearInterval(_chatPollTimer);
+      renderChatSelect();
+    }
+
+    function loadChatMessages() {
+      // NO-OP: kept for backward compat; chat uses _renderMessages now
+    }
+
+    function autoResizeChat(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 80) + 'px';
+    }
+
+    async function sendChatMessage() {
+      const input = document.getElementById('chatInput');
+      if (!input || !input.value.trim() || !_chatFriendId) return;
+      const container = document.getElementById('chatMessages');
+      if (!container) return;
+      const msg = input.value.trim();
+      input.value = '';
+      autoResizeChat(input);
+      // Send to server
+      if (window.electronAPI?.sendChatMessage) {
+        await window.electronAPI.sendChatMessage(_chatFriendId, msg);
+      }
+      // Persist to local store
+      const store = _getChatStore(_chatFriendId);
+      const newMsg = {
+        id: 'msg-' + Date.now(),
+        senderId: 'me',
+        content: msg,
+        createdAt: new Date().toISOString(),
+      };
+      store.push(newMsg);
+      // Append to DOM (single message, no re-render of whole list)
+      const time = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      const div = document.createElement('div');
+      div.className = 'fca-message mine';
+      div.innerHTML = `${escHtml(msg)}<div class="fca-msg-time">${time}</div>`;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // Unread polling
+    let _unreadTimer = null;
+    function startUnreadPolling() {
+      _unreadTimer = setInterval(async () => {
+        const badge = document.getElementById('friendsBadge');
+        if (!badge) return;
+        let count = 0;
+        if (window.electronAPI?.getUnreadCount) {
+          const res = await window.electronAPI.getUnreadCount();
+          if (res.success) count = res.count || 0;
+        }
+        if (count > 0) {
+          badge.textContent = count;
+          badge.style.display = 'inline-flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }, 10000);
+    }
+    setTimeout(startUnreadPolling, 2000);
+
+    // ============================================
+    // SHARED BUILDS
+    // ============================================
+    let _lastShareCode = null;
+
+    async function shareBuild() {
+      const v = VERSIONS.find(x => x.id === selectedVersionId);
+      if (!v) { showToast('Выберите версию', 'error'); return; }
+      if (!isVersionInstalled(v)) { showToast('Установите версию сначала', 'error'); return; }
+      let code = null;
+      if (window.electronAPI?.shareBuild) {
+        const res = await window.electronAPI.shareBuild(v.mcVersion || v.id, v.name, v.category);
+        if (res.success && res.data?.code) code = res.data.code;
+        else { showToast(res.error || 'Ошибка создания сборки', 'error'); return; }
+      } else {
+        code = Array.from({length: 8}, () => '0123456789ABCDEF'[Math.floor(Math.random() * 16)]).join('');
+      }
+      _lastShareCode = code;
+      const display = document.getElementById('shareCodeDisplay');
+      const el = document.getElementById('dpShareCode');
+      if (display) display.textContent = code;
+      if (el) el.style.display = 'flex';
+      showToast('Код сборки создан! Делитесь им с друзьями.', 'success');
+    }
+
+    function copyShareCode() {
+      if (_lastShareCode) {
+        navigator.clipboard?.writeText(_lastShareCode);
+        showToast('Код скопирован', 'success');
+      }
+    }
+
+    async function installSharedBuild() {
+      const input = document.getElementById('shareCodeInput');
+      if (!input || !input.value.trim()) { showToast('Введите код сборки', 'error'); return; }
+      const code = input.value.trim().toUpperCase();
+      input.value = '';
+      if (window.electronAPI?.installSharedBuild) {
+        const res = await window.electronAPI.installSharedBuild(code);
+        if (res.success && res.data) {
+          const target = VERSIONS.find(v => v.id === res.data.versionId || v.name === res.data.versionName);
+          if (target) {
+            showToast(`Установка сборки ${code}: ${target.name}...`, 'info');
+            if (!isVersionInstalled(target)) startVersionDownload(target);
+            else showToast(`Версия ${target.name} уже установлена`, 'info');
+          } else {
+            showToast('Сборка найдена, но версия не найдена в списке', 'info');
+          }
+        } else {
+          showToast(res.error || 'Сборка не найдена', 'error');
+        }
+      } else {
+        const target = VERSIONS.find(v => v.category !== 'offline');
+        if (target) {
+          showToast(`Установка сборки ${code}: ${target.name}...`, 'info');
+          if (!isVersionInstalled(target)) startVersionDownload(target);
+          else showToast(`Версия ${target.name} уже установлена`, 'info');
+        } else {
+          showToast('Сборка не найдена', 'error');
+        }
+      }
+    }
+
+    // ============================================
+    // ACCOUNTS
+    // ============================================
+    function loadAccounts() {
+      if (!window.electronAPI?.getAccounts) return;
+      window.electronAPI.getAccounts().then(res => {
+        if (res.success && res.data) {
+          ACCOUNTS.length = 0;
+          res.data.forEach(a => ACCOUNTS.push(a));
+          renderAccounts();
+          syncProfileToAccountPage();
+        }
+      });
+    }
+
+    function renderAccounts() {
+      const list = document.getElementById('accountsList');
+      list.innerHTML = '';
+      ACCOUNTS.forEach(a => {
+        const card = document.createElement('div');
+        card.className = 'account-card glass-card';
+
+        const avatar = document.createElement('div');
+        avatar.className = `ac-avatar ${a.type === 'ms' ? 'ms' : 'pirate'}`;
+        avatar.textContent = a.nickname.charAt(0).toUpperCase();
+
+        const info = document.createElement('div');
+        info.className = 'ac-info';
+
+        const name = document.createElement('div');
+        name.className = 'ac-name';
+        name.textContent = a.nickname;
+        if (a.primary) {
+          const badge = document.createElement('span');
+          badge.style.cssText = 'color:var(--accent-cyan);font-size:11px;font-weight:500';
+          badge.textContent = '(основной)';
+          name.appendChild(badge);
+        }
+
+        const type = document.createElement('div');
+        type.className = 'ac-type';
+        type.textContent = a.type === 'ms' ? 'Microsoft аккаунт' : 'Пиратский аккаунт';
+
+        info.appendChild(name);
+        info.appendChild(type);
+
+        const actions = document.createElement('div');
+        actions.className = 'ac-actions';
+
+        if (!a.primary) {
+          const primaryBtn = document.createElement('button');
+          primaryBtn.className = 'btn-primary-sm';
+          primaryBtn.textContent = 'Сделать основным';
+          primaryBtn.addEventListener('click', () => setPrimary(a.id));
+          actions.appendChild(primaryBtn);
+        }
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-danger-sm';
+        deleteBtn.textContent = 'Удалить';
+        deleteBtn.addEventListener('click', () => removeAccount(a.id));
+        actions.appendChild(deleteBtn);
+
+        card.appendChild(avatar);
+        card.appendChild(info);
+        card.appendChild(actions);
+        list.appendChild(card);
+      });
+    }
+
+    function setPrimary(id) {
+      if (!window.electronAPI?.setPrimaryAccount) {
+        showToast('Доступно только в приложении', 'error');
+        return;
+      }
+      window.electronAPI.setPrimaryAccount(id).then(res => {
+        if (res.success) {
+          ACCOUNTS.forEach(a => a.primary = a.id === id);
+          renderAccounts();
+          showToast('Основной аккаунт изменён', 'success');
+        } else {
+          showToast(res.error || 'Ошибка', 'error');
+        }
+      });
+    }
+
+    function removeAccount(id) {
+      if (!window.electronAPI?.removeAccount) {
+        showToast('Доступно только в приложении', 'error');
+        return;
+      }
+      window.electronAPI.removeAccount(id).then(res => {
+        if (res.success) {
+          const idx = ACCOUNTS.findIndex(a => a.id === id);
+          if (idx > -1) {
+            const removed = ACCOUNTS.splice(idx, 1)[0];
+            if (removed.primary && ACCOUNTS.length > 0) ACCOUNTS[0].primary = true;
+          }
+          renderAccounts();
+          showToast('Аккаунт удалён', 'info');
+        } else {
+          showToast(res.error || 'Ошибка удаления', 'error');
+        }
+      });
+    }
+
+    function openAddAccountModal() {
+      document.getElementById('addAccountModal').classList.add('open');
+      typeof lucide!=='undefined'&&lucide.createIcons();
+    }
+
+    function selectAccountType(el, type) {
+      document.querySelectorAll('.account-type-select button').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      selectedAccountType = type;
+      document.getElementById('msAccountForm').style.display = type === 'ms' ? '' : 'none';
+      document.getElementById('pirateAccountForm').style.display = type === 'pirate' ? '' : 'none';
+    }
+
+    function addAccount() {
+      const type = selectedAccountType;
+      const nick = type === 'ms' ? `Player_${Math.floor(Math.random() * 10000)}` : document.getElementById('pirateNick').value.trim();
+      if (type !== 'ms' && !nick) { showToast('Введите никнейм', 'error'); return; }
+      if (!window.electronAPI?.addAccount) {
+        showToast('Добавление доступно только в приложении', 'error');
+        return;
+      }
+      window.electronAPI.addAccount(nick, type).then(res => {
+        if (res.success && res.data) {
+          ACCOUNTS.push(res.data);
+          renderAccounts();
+          closeModal('addAccountModal');
+          if (type !== 'ms') document.getElementById('pirateNick').value = '';
+          showToast('Аккаунт добавлен!', 'success');
+        } else {
+          showToast(res.error || 'Ошибка добавления', 'error');
+        }
+      });
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('open');
+    }
+
+    document.querySelectorAll('.modal-overlay').forEach(o => {
+      o.addEventListener('click', (e) => {
+        if (e.target === o) o.classList.remove('open');
+      });
+    });
+
+    // ============================================
+    // PLAY
+    // ============================================
+    function getPrimaryAccount() {
+      return ACCOUNTS.find(a => a.primary) || (ACCOUNTS.length > 0 ? ACCOUNTS[0] : null);
+    }
+
+    function handlePlay() {
+      const installed = VERSIONS.filter(v => isVersionInstalled(v));
+      const btn = document.querySelector('.sidebar-play-btn');
+
+      function resetBtn() {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<span class="glow"></span><i data-lucide="play"></i><span>Играть</span>'; typeof lucide!=='undefined'&&lucide.createIcons(); }
+      }
+
+      function doLaunch(v) {
+        const account = getPrimaryAccount();
+        if (!account) {
+          showToast('Выберите аккаунт перед запуском', 'error');
+          resetBtn(); return;
+        }
+        if (!window.electronAPI?.launchGame) {
+          showToast('Запуск доступен только в десктопном приложении', 'error');
+          resetBtn(); return;
+        }
+        showToast(`Запуск ${v.name}...`, 'info');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<span class="glow"></span><i data-lucide="loader-2" class="spin"></i><span>Запуск...</span>'; typeof lucide!=='undefined'&&lucide.createIcons(); }
+        window.electronAPI.launchGame(v.id, v.mcVersion, v.category, account.nickname, account.type, String(account.id))
+          .then(() => { resetBtn(); })
+          .catch((err) => { showToast('Ошибка запуска: ' + err, 'error'); resetBtn(); });
+      }
+
+      if (installed.length > 0) {
+        doLaunch(installed[0]);
+        return;
+      }
+
+      const latest = VERSIONS.filter(v => v.category === 'vanilla').sort((a, b) => cmpMcVer(parseMcVer(b.mcVersion), parseMcVer(a.mcVersion)))[0];
+      if (confirm(`Версии не установлены. Установить ${latest ? latest.name : 'последнюю версию'} сейчас?`)) {
+        if (!latest) { showToast('Нет доступных версий', 'error'); resetBtn(); return; }
+        latest.installed = false; latest.progress = 0;
+        startVersionDownload(latest).then(() => doLaunch(latest)).catch(() => resetBtn());
+      } else { resetBtn(); }
+    }
+
+    // ============================================
+    // PASSWORD TOGGLE
+    // ============================================
+    function togglePassword(btn) {
+      const wrap = btn.closest('.input-wrap');
+      if (!wrap) { console.warn('[Oasis] .input-wrap not found for togglePassword'); return; }
+      const input = wrap.querySelector('input');
+      if (!input) { console.warn('[Oasis] input not found in .input-wrap'); return; }
+      const icon = btn.querySelector('i');
+      if (!icon) { console.warn('[Oasis] icon element not found in toggle button'); return; }
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      typeof lucide!=='undefined'&&lucide.createIcons();
+    }
+
+    // ============================================
+    // TOAST
+    // ============================================
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) { console.warn('[Oasis] toastContainer not found'); return; }
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        toast.style.transition = '0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // ============================================
+    // Electron IPC listeners (download progress)
+    // ============================================
+    if (window.electronAPI?.onDownloadProgress) {
+      window.electronAPI.onDownloadProgress((_event, data) => {
+        const v = VERSIONS.find(x => x.id === data.versionId);
+        if (!v) return;
+        v.progress = data.percent;
+        if (data.fileName) {
+          const card = document.querySelector(`.version-card[data-id="${data.versionId}"]`);
+          const btn = card?.querySelector('.vc-action-btn');
+          if (btn && data.filesTotal > 0) {
+            const fileProgress = `${data.filesDone}/${data.filesTotal}`;
+            btn.innerHTML = `<i data-lucide="loader-2" width="12" height="12" class="spin"></i> ${Math.round(data.percent)}% (${fileProgress})`;
+          }
+        }
+      });
+    }
+
+    // ============================================
+    // Language switch
+    // ============================================
+    function handleLangChange(sel) {
+      const lang = sel.value;
+      if (window.electronAPI?.langSet) {
+        window.electronAPI.langSet(lang).then(() => {
+          showToast(lang === 'en' ? 'Language changed to English' : 'Язык изменён на Русский', 'success');
+        }).catch(() => {
+          showToast('Ошибка сохранения языка', 'error');
+        });
+      } else {
+        showToast(lang === 'en' ? 'Language: English' : 'Язык: Русский', 'info');
+      }
+    }
+
+    // Restore saved language on startup
+    if (window.electronAPI?.langGet) {
+      window.electronAPI.langGet().then(res => {
+        if (res.success && res.data) {
+          const sel = document.getElementById('langSelect');
+          if (sel) sel.value = res.data;
+        }
+      });
+    }
+
+    // ============================================
+    // ESC key closes modals & detail panel
+    window.addEventListener('unhandledrejection', (e) => {
+      console.warn('Unhandled rejection:', e.reason);
+    });
+
+    // ============================================
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+        closeDetail();
+      }
+    });
+
+    // Spin animation
+    const styleSheet = document.createElement('style');
+    styleSheet.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }`;
+    document.head.appendChild(styleSheet);
+  </script>
+</body>
+</html>
