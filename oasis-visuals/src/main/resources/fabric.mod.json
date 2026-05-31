@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "oasis-visuals",
+  "version": "${version}",
+  "name": "Oasis Visuals",
+  "description": "All-in-one visual enhancement mod for Oasis Launcher",
+  "authors": ["Oasis Team"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/oasis-visuals/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.oasis.visuals.OasisVisuals"]
+  },
+  "mixins": ["oasis-visuals.mixins.json"],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${minecraft_version}",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

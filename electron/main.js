@@ -10,7 +10,13 @@ const crypto = require("crypto");
 const Store = require("electron-store");
 // Генерируем ключ шифрования из пути установки (уникален для каждой установки)
 const storeKey = crypto.createHash("sha256").update(__dirname + "-oasis-launcher-v1").digest("hex").slice(0, 32);
-const store = new Store({ encryptionKey: storeKey });
+let store;
+try { store = new Store({ encryptionKey: storeKey }); }
+catch (e) {
+  const configPath = path.join(app.getPath("userData"), "config.json");
+  try { fs.unlinkSync(configPath); } catch (_) {}
+  store = new Store({ encryptionKey: storeKey });
+}
 
 let mainWindow = null;
 
@@ -18,6 +24,8 @@ const BACKEND_PORT = 3000;
 const BACKEND_DIR = path.join(__dirname, "..", "oasis-api");
 const BACKEND_DIST = path.join(BACKEND_DIR, "dist", "server.js");
 
+const MOD_VERSION = "1.0.0";
+const MOD_JAR_NAME = "oasis-visuals.jar";
 const OASIS_DIR = process.env.APPDATA
   ? path.join(process.env.APPDATA, "OasisLauncher")
   : path.join(__dirname, "..", ".oasislauncher");
@@ -72,6 +80,15 @@ let backendApp = null;
 
 async function startEmbeddedBackend() {
   try {
+    // Load backend .env so JWT_ACCESS_SECRET etc. are available
+    const backendEnvPath = path.join(BACKEND_DIR, ".env");
+    if (fs.existsSync(backendEnvPath)) {
+      const envContent = fs.readFileSync(backendEnvPath, "utf8");
+      for (const line of envContent.split(/\r?\n/)) {
+        const m = line.match(/^\s*(\w+)=(.*)$/);
+        if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+      }
+    }
     const { buildApp } = require(path.join(BACKEND_DIR, "dist", "app.js"));
     process.env.PORT = String(BACKEND_PORT);
     process.env.HOST = "127.0.0.1";
@@ -500,6 +517,29 @@ ipcMain.handle("lang-get", async () => {
 ipcMain.handle("lang-set", async (_event, { lang }) => {
   try {
     store.set("language", lang);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+// ============================================
+// OASIS VISUALS MOD MANAGEMENT
+// ============================================
+ipcMain.handle("get-mod-status", async () => {
+  try {
+    const enabled = store.get("mod-oasis-visuals-enabled", false);
+    return { success: true, enabled, version: MOD_VERSION };
+  } catch (e) { return { success: false, error: e.message }; }
+});
+
+ipcMain.handle("set-mod-status", async (_event, { enabled }) => {
+  try {
+    store.set("mod-oasis-visuals-enabled", enabled);
+    const modsDir = path.join(OASIS_DIR, "versions", "1.21", "mods");
+    const jarPath = path.join(modsDir, MOD_JAR_NAME);
+    if (enabled && !fs.existsSync(jarPath)) {
+      fs.mkdirSync(modsDir, { recursive: true });
+      log("Mod enabled but JAR not found. Place oasis-visuals.jar in " + modsDir, "WARN");
+    }
     return { success: true };
   } catch (e) { return { success: false, error: e.message }; }
 });
@@ -1047,15 +1087,20 @@ ipcMain.handle("launch-game", async (event, { versionId, mcVersion, category, ni
       const timeout = setTimeout(() => {
         gameProcess.kill();
         reject(new Error("Java process timed out"));
-      }, 30000);
+      }, 120000);
+      // Once game stays alive for 20s, remove timeout (it's clearly running)
+      const readyTimer = setTimeout(() => clearTimeout(timeout), 20000);
+      readyTimer.unref();
       gameProcess.on("error", (err) => {
         clearTimeout(timeout);
+        clearTimeout(readyTimer);
         const msg = `Ошибка запуска Java: ${err.message}. Убедитесь, что Java 17+ установлена.`;
         log(msg, "ERROR");
         reject(new Error(msg));
       });
       gameProcess.on("close", (code) => {
         clearTimeout(timeout);
+        clearTimeout(readyTimer);
         log(`game exited with code ${code}`);
         if (code !== 0 && code !== null) log(`Minecraft завершилась с кодом ${code}`, "WARN");
         if (code === 0) touchInstalledLaunched(gameVersion);

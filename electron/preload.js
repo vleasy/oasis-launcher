@@ -104,6 +104,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   installSharedBuild: (code) =>
     ipcRenderer.invoke("install-shared-build", { code }),
 
+  // Oasis Visuals Mod
+  getModStatus: () => ipcRenderer.invoke("get-mod-status"),
+  setModStatus: (enabled) => ipcRenderer.invoke("set-mod-status", { enabled }),
+
   // Listen for download progress
   onDownloadProgress: (callback) =>
     ipcRenderer.on("download-progress", (_event, data) => callback(data)),
